@@ -43,7 +43,7 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
             href="/dashboard"
             className="text-lg font-bold"
           >
-            S
+            ABC
           </Link>
         )}
       </div>
