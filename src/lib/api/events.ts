@@ -29,6 +29,9 @@ export type Event = {
 
     clientId: string;
     venueId: string | null;
+    agencyName: string | null;
+    clientName: string | null;
+    venueName: string | null;
 
     eventNumber: string;
     name: string;
@@ -269,4 +272,48 @@ export async function getEventCalendar(
         );
 
     return response.data.data;
+}
+
+export async function getClientEvents(
+    clientId: string,
+    pageNumber = 1,
+    pageSize = 10,
+    search = ""
+): Promise<PagedResult<Event>> {
+    const response = await apiClient.get<
+        ApiResponse<PagedResult<Event>>
+    >(
+        `/api/client/${clientId}/events/paged`,
+        {
+            params: {
+                PageNumber: pageNumber,
+                PageSize: pageSize,
+                Search: search,
+            },
+        }
+    );
+
+    return response.data.data;
+
+}
+
+export async function getClientEventsCalendar(
+    clientId: string,
+    year: number,
+    month: number
+): Promise<Event[]> {
+    const response = await apiClient.get<
+        ApiResponse<Event[]>
+    >(
+        `/api/client/${clientId}/events/calendar`,
+        {
+            params: {
+                Year: year,
+                Month: month,
+            },
+        }
+    );
+
+    return response.data.data;
+
 }

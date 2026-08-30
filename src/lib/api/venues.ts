@@ -4,17 +4,29 @@ export type Venue = {
     id: string;
     tenantId: string;
     name: string;
-    address: string | null;
-    city: string | null;
-    province: string | null;
-    postalCode: string | null;
-    contactPerson: string | null;
-    contactNumber: string | null;
-    latitude: number | null;
-    longitude: number | null;
-    notes: string | null;
+    address?: string | null;
+    city?: string | null;
+    province?: string | null;
+    postalCode?: string | null;
+    contactPerson?: string | null;
+    contactNumber?: string | null;
+    latitude?: number | null;
+    longitude?: number | null;
+    notes?: string | null;
     isActive: boolean;
 };
+
+export async function getVenuesByTenant(
+    tenantId: string
+): Promise<Venue[]> {
+    const response = await apiClient.get<
+        ApiResponse<Venue[]>
+    >(
+        `/api/tenants/${tenantId}/venues`
+    );
+
+    return response.data.data;
+}
 
 export type PagedResult<T> = {
     pageNumber: number;

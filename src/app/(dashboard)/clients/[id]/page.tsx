@@ -9,6 +9,7 @@ import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ClientDialog } from "@/components/clients/client-dialog";
 import { getClient } from "@/lib/api/clients";
+import { ClientEvents } from "@/components/clients/client-events";
 
 export default function ClientDetailsPage() {
     const params = useParams<{ id: string }>();
@@ -205,7 +206,8 @@ export default function ClientDetailsPage() {
                     </p>
                 </div>
             )}
-
+            {/* Client Events */}
+            <ClientEvents client={client} />
             {/* Edit Client Dialog */}
             <ClientDialog
                 client={client}
