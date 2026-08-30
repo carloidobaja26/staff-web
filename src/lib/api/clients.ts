@@ -30,7 +30,8 @@ export type ApiResponse<T> = {
 
 export async function getClients(
   pageNumber = 1,
-  pageSize = 10
+  pageSize = 10,
+  search = ""
 ): Promise<PagedResult<Client>> {
   const response = await apiClient.get<ApiResponse<PagedResult<Client>>>(
     "/api/client/paged",
@@ -38,6 +39,7 @@ export async function getClients(
       params: {
         PageNumber: pageNumber,
         PageSize: pageSize,
+        Search: search,
       },
     }
   );
@@ -100,4 +102,8 @@ export async function getClient(id: string): Promise<Client> {
   );
 
   return response.data.data;
+}
+
+export async function deleteClient(id: string): Promise<void> {
+    await apiClient.delete(`/api/client/${id}`);
 }

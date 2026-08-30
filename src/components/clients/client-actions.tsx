@@ -20,7 +20,7 @@ import {
 
 import { ClientDialog } from "./client-dialog";
 import type { Client } from "@/lib/api/clients";
-
+import { DeleteClientDialog } from "./delete-client-dialog";
 type ClientActionsProps = {
     client: Client;
     onSuccess: () => void;
@@ -31,7 +31,7 @@ export function ClientActions({
     onSuccess,
 }: ClientActionsProps) {
     const [editOpen, setEditOpen] = useState(false);
-
+    const [deleteOpen, setDeleteOpen] = useState(false);
     return (
         <>
             <DropdownMenu>
@@ -72,7 +72,12 @@ export function ClientActions({
                     <DropdownMenuSeparator />
 
                     {/* Delete */}
-                    <DropdownMenuItem className="text-destructive">
+                    <DropdownMenuItem
+                        className="text-destructive focus:text-destructive"
+                        onSelect={() => {
+                            setDeleteOpen(true);
+                        }}
+                    >
                         <Trash2 className="mr-2 size-4" />
                         Delete
                     </DropdownMenuItem>
@@ -86,6 +91,13 @@ export function ClientActions({
                 open={editOpen}
                 onOpenChange={setEditOpen}
                 onSuccess={onSuccess}
+            />
+
+            {/* Delete Dialog */}
+            <DeleteClientDialog
+                client={client}
+                open={deleteOpen}
+                onOpenChange={setDeleteOpen}
             />
         </>
     );
