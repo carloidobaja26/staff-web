@@ -9,7 +9,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-import { createWorker } from "@/lib/api/workers";
+import {
+    createWorker,
+    updateWorker,
+    type Worker,
+} from "@/lib/api/workers";
 
 import {
     CURRENT_AGENCY_ID,
@@ -47,12 +51,14 @@ type WorkerFormValues = z.infer<
 
 
 type WorkerFormProps = {
+    worker?: Worker;
     onSuccess: () => void;
     onCancel: () => void;
 };
 
 
 export function WorkerForm({
+    worker,
     onSuccess,
     onCancel,
 }: WorkerFormProps) {
@@ -70,12 +76,12 @@ export function WorkerForm({
         resolver: zodResolver(workerSchema),
 
         defaultValues: {
-            workerNumber: "",
-            firstName: "",
-            lastName: "",
-            email: "",
-            phoneNumber: "",
-            birthDate: "",
+            workerNumber: worker?.workerNumber ?? "",
+            firstName: worker?.firstName ?? "",
+            lastName: worker?.lastName ?? "",
+            email: worker?.email ?? "",
+            phoneNumber: worker?.phoneNumber ?? "",
+            birthDate: worker?.birthDate ?? "",
         },
     });
 
@@ -86,44 +92,48 @@ export function WorkerForm({
         setSubmitError(null);
 
         try {
-            await createWorker({
+            const request = {
                 tenantId: CURRENT_TENANT_ID,
                 agencyId: CURRENT_AGENCY_ID,
 
-                workerNumber:
-                    values.workerNumber,
-
-                firstName:
-                    values.firstName,
-
-                lastName:
-                    values.lastName,
-
-                email:
-                    values.email,
+                workerNumber: values.workerNumber,
+                firstName: values.firstName,
+                lastName: values.lastName,
+                email: values.email,
 
                 phoneNumber:
-                    values.phoneNumber ||
-                    undefined,
+                    values.phoneNumber || undefined,
 
                 birthDate:
-                    values.birthDate ||
-                    undefined,
-            });
+                    values.birthDate || undefined,
+            };
+
+            if (worker) {
+                await updateWorker(
+                    worker.id,
+                    {
+                        ...request,
+                        isActive: worker.isActive,
+                    }
+                );
+            } else {
+                await createWorker(request);
+            }
 
             onSuccess();
         } catch (error) {
             console.error(
-                "Failed to create worker:",
+                "Failed to save worker:",
                 error
             );
 
             setSubmitError(
-                "Failed to create worker. Please try again."
+                worker
+                    ? "Failed to update worker. Please try again."
+                    : "Failed to create worker. Please try again."
             );
         }
     };
-
 
     return (
         <form
@@ -278,8 +288,12 @@ export function WorkerForm({
                     disabled={isSubmitting}
                 >
                     {isSubmitting
-                        ? "Adding..."
-                        : "Add Worker"}
+                        ? worker
+                            ? "Saving..."
+                            : "Adding..."
+                        : worker
+                            ? "Save Changes"
+                            : "Add Worker"}
                 </Button>
             </div>
         </form>

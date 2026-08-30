@@ -12,44 +12,72 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog";
 
+import type { Worker } from "@/lib/api/workers";
 import { WorkerForm } from "./worker-form";
 
 type WorkerDialogProps = {
+    worker?: Worker;
+    open?: boolean;
+    onOpenChange?: (open: boolean) => void;
     onSuccess: () => void;
 };
 
 export function WorkerDialog({
+    worker,
+    open,
+    onOpenChange,
     onSuccess,
 }: WorkerDialogProps) {
-    const [open, setOpen] = useState(false);
+    const [internalOpen, setInternalOpen] = useState(false);
+
+    const isControlled = open !== undefined;
+
+    const dialogOpen = isControlled
+        ? open
+        : internalOpen;
+
+    const handleOpenChange = (value: boolean) => {
+        if (isControlled) {
+            onOpenChange?.(value);
+        } else {
+            setInternalOpen(value);
+        }
+    };
 
     const handleSuccess = () => {
-        setOpen(false);
+        handleOpenChange(false);
         onSuccess();
     };
 
     return (
         <Dialog
-            open={open}
-            onOpenChange={setOpen}
+            open={dialogOpen}
+            onOpenChange={handleOpenChange}
         >
-            <DialogTrigger asChild>
-                <Button>
-                    <Plus className="mr-2 size-4" />
-                    Add Worker
-                </Button>
-            </DialogTrigger>
+            {!isControlled && (
+                <DialogTrigger asChild>
+                    <Button>
+                        <Plus className="mr-2 size-4" />
+                        Add Worker
+                    </Button>
+                </DialogTrigger>
+            )}
 
             <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
                 <DialogHeader>
                     <DialogTitle>
-                        Add Worker
+                        {worker
+                            ? "Edit Worker"
+                            : "Add Worker"}
                     </DialogTitle>
                 </DialogHeader>
 
                 <WorkerForm
+                    worker={worker}
                     onSuccess={handleSuccess}
-                    onCancel={() => setOpen(false)}
+                    onCancel={() =>
+                        handleOpenChange(false)
+                    }
                 />
             </DialogContent>
         </Dialog>

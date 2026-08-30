@@ -10,7 +10,7 @@ export default function WorkersPage() {
           </h1>
 
           <p className="mt-1 text-sm text-muted-foreground">
-            Manage the organizations you provide staffing services for.
+            Manage the workers.
           </p>
         </div>
       </div>

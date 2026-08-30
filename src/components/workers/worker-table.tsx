@@ -20,6 +20,7 @@ import {
     useQuery,
     useQueryClient,
 } from "@tanstack/react-query";
+import { WorkerActions } from "./worker-actions";
 
 export function WorkerTable() {
     const [pageNumber, setPageNumber] = useState(1);
@@ -121,16 +122,16 @@ export function WorkerTable() {
         totalNumber === 0
             ? 0
             : (pageNumber - 1) *
-                    pageSize +
-                1;
+            pageSize +
+            1;
 
     const endItem =
         totalNumber === 0
             ? 0
             : Math.min(
-                  pageNumber * pageSize,
-                  totalNumber
-              );
+                pageNumber * pageSize,
+                totalNumber
+            );
 
     /*
      * Loading.
@@ -350,18 +351,17 @@ export function WorkerTable() {
                                             <td className="px-4 py-4 text-sm text-muted-foreground">
                                                 {worker.birthDate
                                                     ? new Date(
-                                                          worker.birthDate
-                                                      ).toLocaleDateString()
+                                                        worker.birthDate
+                                                    ).toLocaleDateString()
                                                     : "—"}
                                             </td>
 
                                             <td className="px-4 py-4">
                                                 <span
-                                                    className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${
-                                                        worker.isActive
+                                                    className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${worker.isActive
                                                             ? "bg-primary/10 text-primary"
                                                             : "bg-muted text-muted-foreground"
-                                                    }`}
+                                                        }`}
                                                 >
                                                     {worker.isActive
                                                         ? "Active"
@@ -370,7 +370,14 @@ export function WorkerTable() {
                                             </td>
 
                                             <td className="px-4 py-4">
-                                                —
+                                                <WorkerActions
+                                                    worker={worker}
+                                                    onSuccess={() => {
+                                                        queryClient.invalidateQueries({
+                                                            queryKey: ["workers"],
+                                                        });
+                                                    }}
+                                                />
                                             </td>
                                         </tr>
                                     )
@@ -475,7 +482,7 @@ export function WorkerTable() {
                                             }
                                             variant={
                                                 pageNumber ===
-                                                page
+                                                    page
                                                     ? "default"
                                                     : "outline"
                                             }

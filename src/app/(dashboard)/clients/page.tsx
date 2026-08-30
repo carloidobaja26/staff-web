@@ -10,7 +10,7 @@ export default function ClientsPage() {
           </h1>
 
           <p className="mt-1 text-sm text-muted-foreground">
-            Manage the organizations you provide staffing services for.
+            Manage the clients.
           </p>
         </div>
       </div>
