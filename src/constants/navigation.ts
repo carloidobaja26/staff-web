@@ -67,6 +67,11 @@ export const navigation: NavigationGroup[] = [
         icon: CalendarDays,
       },
       {
+        label: "Shifts",
+        href: "/shifts",
+        icon: ClipboardCheck,
+      },
+      {
         label: "Bookings",
         href: "/bookings",
         icon: ClipboardCheck,
