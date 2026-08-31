@@ -13,6 +13,7 @@ export type Shift = {
     id: string;
     tenantId: string;
     eventId: string;
+    eventName: string;
 
     name: string;
     description: string | null;

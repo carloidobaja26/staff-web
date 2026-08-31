@@ -101,3 +101,13 @@ export async function deleteWorker(
     await apiClient.delete(`/api/worker/${id}`);
 }
 
+export async function getWorkersByAgency(
+    agencyId: string
+): Promise<Worker[]> {
+
+    const response = await apiClient.get(
+        `/api/agency/${agencyId}/workers`
+    );
+
+    return response.data.data;
+}

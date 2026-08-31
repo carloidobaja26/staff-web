@@ -31,6 +31,10 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 
+import {
+    CURRENT_TENANT_ID,
+    CURRENT_AGENCY_ID,
+} from "@/constants/tenant";
 
 type ShiftRoleDialogProps = {
     shiftId: string;
@@ -170,6 +174,7 @@ export function ShiftRoleDialog({
             } else {
 
                 await createShiftRole({
+                    tenantId: CURRENT_TENANT_ID,
                     shiftId,
                     name: name.trim(),
                     requestedWorkers: workers,
@@ -324,6 +329,9 @@ export function ShiftRoleDialog({
 
                                 <SelectItem value="2">
                                     Daily
+                                </SelectItem>
+                                <SelectItem value="3">
+                                    Fixed
                                 </SelectItem>
 
                             </SelectContent>

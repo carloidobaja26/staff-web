@@ -18,6 +18,17 @@ import {
 import { Button } from "@/components/ui/button";
 
 import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
+import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
@@ -31,12 +42,11 @@ import {
 } from "@/lib/api/shift-roles";
 
 import { ShiftRoleDialog } from "./shift-role-dialog";
-
+import { ShiftRoleBookingsDialog } from "./shift-role-bookings-dialog";
 
 type ShiftRolesProps = {
     shiftId: string;
 };
-
 
 export function ShiftRoles({
     shiftId,
@@ -46,11 +56,25 @@ export function ShiftRoles({
         useQueryClient();
 
 
-    const [dialogOpen, setDialogOpen] =
+    const [roleDialogOpen, setRoleDialogOpen] =
         useState(false);
+
+    const [bookingsDialogOpen, setBookingsDialogOpen] =
+        useState(false);
+
+    const [deleteDialogOpen, setDeleteDialogOpen] =
+        useState(false);
+
 
     const [selectedRole, setSelectedRole] =
         useState<ShiftRole | null>(null);
+
+    const [roleToDelete, setRoleToDelete] =
+        useState<ShiftRole | null>(null);
+
+
+    const [isDeleting, setIsDeleting] =
+        useState(false);
 
 
     const {
@@ -74,7 +98,7 @@ export function ShiftRoles({
     function handleAdd() {
 
         setSelectedRole(null);
-        setDialogOpen(true);
+        setRoleDialogOpen(true);
 
     }
 
@@ -84,53 +108,76 @@ export function ShiftRoles({
     ) {
 
         setSelectedRole(role);
-        setDialogOpen(true);
+        setRoleDialogOpen(true);
 
     }
 
 
-    async function handleDelete(
+    function handleManageBookings(
         role: ShiftRole
     ) {
 
-        const confirmed =
-            window.confirm(
-                `Delete "${role.name}"?`
-            );
+        setSelectedRole(role);
+        setBookingsDialogOpen(true);
 
-        if (!confirmed) {
+    }
+
+
+    function handleDelete(
+        role: ShiftRole
+    ) {
+
+        setRoleToDelete(role);
+        setDeleteDialogOpen(true);
+
+    }
+
+
+    async function confirmDelete() {
+
+        if (!roleToDelete) {
             return;
         }
 
 
         try {
 
+            setIsDeleting(true);
+
+
             await deleteShiftRole(
-                role.id
+                roleToDelete.id
             );
 
 
-            queryClient.invalidateQueries({
+            await queryClient.invalidateQueries({
                 queryKey: [
                     "shift-roles",
                     shiftId,
                 ],
             });
 
+
+            setDeleteDialogOpen(false);
+            setRoleToDelete(null);
+
         } catch (error) {
 
-            window.alert(
-                error instanceof Error
-                    ? error.message
-                    : "Failed to delete shift role."
+            console.error(
+                "Failed to delete shift role:",
+                error
             );
+
+        } finally {
+
+            setIsDeleting(false);
 
         }
 
     }
 
 
-    function handleSuccess() {
+    function handleRoleSuccess() {
 
         queryClient.invalidateQueries({
             queryKey: [
@@ -256,6 +303,11 @@ export function ShiftRoles({
                                                     role
                                                 )
                                             }
+                                            onManageBookings={() =>
+                                                handleManageBookings(
+                                                    role
+                                                )
+                                            }
                                         />
 
                                     )
@@ -270,37 +322,121 @@ export function ShiftRoles({
             </div>
 
 
+            {/* Add / Edit Shift Role */}
+
             <ShiftRoleDialog
                 shiftId={shiftId}
                 role={selectedRole}
-                open={dialogOpen}
+                open={roleDialogOpen}
                 onOpenChange={
-                    setDialogOpen
+                    setRoleDialogOpen
                 }
                 onSuccess={
-                    handleSuccess
+                    handleRoleSuccess
                 }
             />
+
+
+            {/* Shift Role Bookings */}
+
+            <ShiftRoleBookingsDialog
+            role={selectedRole}
+            open={bookingsDialogOpen}
+            onOpenChange={
+                setBookingsDialogOpen
+            }
+        />
+
+
+            {/* Delete Confirmation */}
+
+            <AlertDialog
+                open={deleteDialogOpen}
+                onOpenChange={(open) => {
+
+                    if (isDeleting) {
+                        return;
+                    }
+
+                    setDeleteDialogOpen(open);
+
+                    if (!open) {
+                        setRoleToDelete(null);
+                    }
+
+                }}
+            >
+
+                <AlertDialogContent>
+
+                    <AlertDialogHeader>
+
+                        <AlertDialogTitle>
+                            Delete shift role?
+                        </AlertDialogTitle>
+
+
+                        <AlertDialogDescription>
+
+                            Are you sure you want to delete{" "}
+
+                            <span className="font-medium text-foreground">
+                                {roleToDelete?.name}
+                            </span>
+
+                            ? This action cannot be undone.
+
+                        </AlertDialogDescription>
+
+                    </AlertDialogHeader>
+
+
+                    <AlertDialogFooter>
+
+                        <AlertDialogCancel
+                            disabled={isDeleting}
+                        >
+                            Cancel
+                        </AlertDialogCancel>
+
+
+                        <AlertDialogAction
+                            onClick={confirmDelete}
+                            disabled={isDeleting}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                            {isDeleting
+                                ? "Deleting..."
+                                : "Delete"}
+                        </AlertDialogAction>
+
+                    </AlertDialogFooter>
+
+                </AlertDialogContent>
+
+            </AlertDialog>
+
         </>
     );
-}
 
+}
 
 type ShiftRoleRowProps = {
     role: ShiftRole;
     onEdit: () => void;
     onDelete: () => void;
+    onManageBookings: () => void;
 };
-
 
 function ShiftRoleRow({
     role,
     onEdit,
     onDelete,
+    onManageBookings,
 }: ShiftRoleRowProps) {
 
     return (
-        <div className="flex items-center justify-between gap-4 py-4">
+        <div className="flex flex-col gap-4 py-4 sm:flex-row sm:items-center sm:justify-between">
 
             <div className="min-w-0">
 
@@ -309,6 +445,7 @@ function ShiftRoleRow({
                     <p className="font-medium">
                         {role.name}
                     </p>
+
 
                     {!role.isActive && (
                         <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
@@ -325,7 +462,8 @@ function ShiftRoleRow({
                         {role.requestedWorkers}{" "}
                         {role.requestedWorkers === 1
                             ? "worker"
-                            : "workers"}
+                            : "workers"}{" "}
+                        requested
                     </span>
 
 
@@ -351,49 +489,66 @@ function ShiftRoleRow({
             </div>
 
 
-            <DropdownMenu>
+            <div className="flex items-center gap-2">
 
-                <DropdownMenuTrigger asChild>
-
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                    >
-                        <MoreHorizontal className="size-4" />
-                        <span className="sr-only">
-                            Role actions
-                        </span>
-                    </Button>
-
-                </DropdownMenuTrigger>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={
+                        onManageBookings
+                    }
+                >
+                    <Users className="mr-2 size-4" />
+                    Manage Workers
+                </Button>
 
 
-                <DropdownMenuContent align="end">
+                <DropdownMenu>
 
-                    <DropdownMenuItem
-                        onClick={onEdit}
-                    >
-                        <Pencil className="mr-2 size-4" />
-                        Edit
-                    </DropdownMenuItem>
+                    <DropdownMenuTrigger asChild>
+
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                        >
+                            <MoreHorizontal className="size-4" />
+
+                            <span className="sr-only">
+                                Role actions
+                            </span>
+                        </Button>
+
+                    </DropdownMenuTrigger>
 
 
-                    <DropdownMenuItem
-                        className="text-destructive focus:text-destructive"
-                        onClick={onDelete}
-                    >
-                        <Trash2 className="mr-2 size-4" />
-                        Delete
-                    </DropdownMenuItem>
+                    <DropdownMenuContent align="end">
 
-                </DropdownMenuContent>
+                        <DropdownMenuItem
+                            onClick={onEdit}
+                        >
+                            <Pencil className="mr-2 size-4" />
+                            Edit
+                        </DropdownMenuItem>
 
-            </DropdownMenu>
+
+                        <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
+                            onClick={onDelete}
+                        >
+                            <Trash2 className="mr-2 size-4" />
+                            Delete
+                        </DropdownMenuItem>
+
+                    </DropdownMenuContent>
+
+                </DropdownMenu>
+
+            </div>
 
         </div>
     );
-}
 
+}
 
 function formatRate(
     rate: number
@@ -403,12 +558,11 @@ function formatRate(
         undefined,
         {
             style: "currency",
-            currency: "PHP",
+            currency: "USD",
         }
     ).format(rate);
 
 }
-
 
 function getRateTypeLabel(
     rateType: number
