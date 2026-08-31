@@ -2,6 +2,7 @@ import { apiClient } from "./client";
 import {
     CURRENT_TENANT_ID,
     CURRENT_AGENCY_ID,
+    CURRENT_USER_ID,
 } from "@/constants/tenant";
 
 export type BookingStatus =
@@ -46,12 +47,22 @@ export async function getBookingsByShiftRole(
     return response.data.data;
 }
 
+export async function getBookingsByShiftRoleConfirm(
+    shiftRoleId: string
+): Promise<Booking[]> {
+
+    const response = await apiClient.get(
+        `/api/shiftrolesconfirm/${shiftRoleId}/bookings`
+    );
+
+    return response.data.data;
+}
 
 export async function createBooking(
     request: CreateBookingRequest
 ): Promise<Booking> {
     request.tenantId = CURRENT_TENANT_ID;
-    request.assignedById = "3c7f5175-6269-4356-853c-052e8e34ee6d";
+    request.assignedById = CURRENT_USER_ID;
     const response = await apiClient.post(
         "/api/booking",
         request

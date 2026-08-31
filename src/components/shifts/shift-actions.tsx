@@ -27,7 +27,7 @@ import { DeleteShiftDialog } from "./delete-shift-dialog";
 
 
 type ShiftActionsProps = {
-    eventId?: string;
+    eventId: string;
     shift: Shift;
     onSuccess: () => void;
 };

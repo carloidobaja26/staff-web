@@ -8,6 +8,7 @@ import {
 } from "@tanstack/react-query";
 
 import {
+    Check,
     MoreHorizontal,
     Plus,
     Trash2,
@@ -54,6 +55,7 @@ import {
     getBookingsByShiftRole,
     createBooking,
     deleteBooking,
+    updateBooking,
     type Booking,
 } from "@/lib/api/bookings";
 
@@ -79,6 +81,7 @@ import {
 
 import {
     CURRENT_AGENCY_ID,
+    CURRENT_USER_ID,
 } from "@/constants/tenant";
 
 type ShiftRoleBookingsDialogProps = {
@@ -96,22 +99,23 @@ export function ShiftRoleBookingsDialog({
     const queryClient =
         useQueryClient();
 
-
     const [assignOpen, setAssignOpen] =
         useState(false);
-
 
     const [bookingToDelete, setBookingToDelete] =
         useState<Booking | null>(null);
 
-
     const [deleteOpen, setDeleteOpen] =
         useState(false);
-
 
     const [isDeleting, setIsDeleting] =
         useState(false);
 
+    const [confirmingBookingId, setConfirmingBookingId] =
+        useState<string | null>(null);
+
+    const [actionError, setActionError] =
+        useState<string | null>(null);
 
     const {
         data: bookings = [],
@@ -134,26 +138,56 @@ export function ShiftRoleBookingsDialog({
             !!role?.id,
     });
 
-
     const assignedCount =
         bookings.length;
 
-
     const requestedCount =
         role?.requestedWorkers ?? 0;
+function handleAssignSuccess() {
+    queryClient.invalidateQueries({
+        queryKey: [
+            "shift-role-bookings",
+            role?.id,
+        ],
+    });
 
+    // Also refresh attendance's confirmed-worker query
+    queryClient.invalidateQueries({
+        queryKey: [
+            "shift-role-bookings-confirm",
+            role?.id,
+        ],
+    });
+}
 
-    function handleAssignSuccess() {
+async function handleConfirm(booking: Booking) {
+    try {
+        await updateBooking(booking.id, {
+            status: 2, // Confirmed
+        });
 
-        queryClient.invalidateQueries({
+        // Refresh Manage Workers
+        await queryClient.invalidateQueries({
             queryKey: [
                 "shift-role-bookings",
                 role?.id,
             ],
         });
 
+        // Refresh Attendance
+        await queryClient.invalidateQueries({
+            queryKey: [
+                "shift-role-bookings-confirm",
+                role?.id,
+            ],
+        });
+    } catch (error) {
+        console.error(
+            "Failed to confirm worker:",
+            error
+        );
     }
-
+}
 
     function handleDelete(
         booking: Booking
@@ -163,10 +197,11 @@ export function ShiftRoleBookingsDialog({
             booking
         );
 
+        setActionError(null);
+
         setDeleteOpen(true);
 
     }
-
 
     async function confirmDelete() {
 
@@ -174,16 +209,15 @@ export function ShiftRoleBookingsDialog({
             return;
         }
 
-
         try {
 
             setIsDeleting(true);
 
+            setActionError(null);
 
             await deleteBooking(
                 bookingToDelete.id
             );
-
 
             await queryClient.invalidateQueries({
                 queryKey: [
@@ -192,16 +226,17 @@ export function ShiftRoleBookingsDialog({
                 ],
             });
 
-
             setDeleteOpen(false);
 
             setBookingToDelete(null);
 
         } catch (error) {
 
-            console.error(
-                "Failed to delete booking:",
-                error
+            setActionError(
+                getApiErrorMessage(
+                    error,
+                    "Failed to remove worker."
+                )
             );
 
         } finally {
@@ -211,7 +246,6 @@ export function ShiftRoleBookingsDialog({
         }
 
     }
-
 
     return (
         <>
@@ -233,7 +267,6 @@ export function ShiftRoleBookingsDialog({
                         </DialogTitle>
 
                     </DialogHeader>
-
 
                     {role && (
                         <div className="space-y-6">
@@ -264,7 +297,6 @@ export function ShiftRoleBookingsDialog({
 
                                     </div>
 
-
                                     <div className="text-sm text-muted-foreground">
 
                                         <p>
@@ -290,6 +322,19 @@ export function ShiftRoleBookingsDialog({
                             </div>
 
 
+                            {/* Action Error */}
+
+                            {actionError && (
+                                <div className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2">
+
+                                    <p className="text-sm text-destructive">
+                                        {actionError}
+                                    </p>
+
+                                </div>
+                            )}
+
+
                             {/* Assigned Workers */}
 
                             <div>
@@ -303,12 +348,10 @@ export function ShiftRoleBookingsDialog({
                                         </h3>
 
                                         <p className="text-sm text-muted-foreground">
-                                            Workers currently
-                                            assigned to this role.
+                                            Workers currently assigned to this role.
                                         </p>
 
                                     </div>
-
 
                                     <Button
                                         size="sm"
@@ -371,8 +414,7 @@ export function ShiftRoleBookingsDialog({
                                             </h4>
 
                                             <p className="mt-1 text-sm text-muted-foreground">
-                                                Assign workers to
-                                                this shift role.
+                                                Assign workers to this shift role.
                                             </p>
 
                                             <Button
@@ -410,6 +452,15 @@ export function ShiftRoleBookingsDialog({
                                                         }
                                                         booking={
                                                             booking
+                                                        }
+                                                        isConfirming={
+                                                            confirmingBookingId ===
+                                                            booking.id
+                                                        }
+                                                        onConfirm={() =>
+                                                            handleConfirm(
+                                                                booking
+                                                            )
                                                         }
                                                         onDelete={() =>
                                                             handleDelete(
@@ -462,14 +513,18 @@ export function ShiftRoleBookingsDialog({
                         return;
                     }
 
-
                     setDeleteOpen(open);
 
-
                     if (!open) {
+
                         setBookingToDelete(
                             null
                         );
+
+                        setActionError(
+                            null
+                        );
+
                     }
 
                 }}
@@ -498,10 +553,23 @@ export function ShiftRoleBookingsDialog({
                     </AlertDialogHeader>
 
 
+                    {actionError && (
+                        <div className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2">
+
+                            <p className="text-sm text-destructive">
+                                {actionError}
+                            </p>
+
+                        </div>
+                    )}
+
+
                     <AlertDialogFooter>
 
                         <AlertDialogCancel
-                            disabled={isDeleting}
+                            disabled={
+                                isDeleting
+                            }
                         >
                             Cancel
                         </AlertDialogCancel>
@@ -532,17 +600,22 @@ export function ShiftRoleBookingsDialog({
 
 }
 
+
 /* -------------------------------------------------------------------------- */
 /* Booking Row                                                                */
 /* -------------------------------------------------------------------------- */
 
 type BookingRowProps = {
     booking: Booking;
+    isConfirming: boolean;
+    onConfirm: () => void;
     onDelete: () => void;
 };
 
 function BookingRow({
     booking,
+    isConfirming,
+    onConfirm,
     onDelete,
 }: BookingRowProps) {
 
@@ -564,17 +637,24 @@ function BookingRow({
                         {booking.workerName}
                     </p>
 
+
                     <p className="mt-1 text-xs text-muted-foreground">
+
                         Assigned by{" "}
+
                         <span className="font-medium text-foreground">
                             {booking.assignedName || "Unknown"}
                         </span>
+
                     </p>
 
+
                     <p className="mt-1 text-xs text-muted-foreground">
+
                         {formatDateTime(
                             booking.assignedAt
                         )}
+
                     </p>
 
                 </div>
@@ -598,12 +678,16 @@ function BookingRow({
                         <Button
                             variant="ghost"
                             size="icon"
+                            disabled={
+                                isConfirming
+                            }
                         >
                             <MoreHorizontal className="size-4" />
 
                             <span className="sr-only">
                                 Booking actions
                             </span>
+
                         </Button>
 
                     </DropdownMenuTrigger>
@@ -611,12 +695,40 @@ function BookingRow({
 
                     <DropdownMenuContent align="end">
 
+                        {booking.status === 1 && (
+
+                            <DropdownMenuItem
+                                onClick={
+                                    onConfirm
+                                }
+                                disabled={
+                                    isConfirming
+                                }
+                            >
+                                <Check className="mr-2 size-4" />
+
+                                {isConfirming
+                                    ? "Confirming..."
+                                    : "Confirm Worker"}
+
+                            </DropdownMenuItem>
+
+                        )}
+
+
                         <DropdownMenuItem
                             className="text-destructive focus:text-destructive"
-                            onClick={onDelete}
+                            onClick={
+                                onDelete
+                            }
+                            disabled={
+                                isConfirming
+                            }
                         >
                             <Trash2 className="mr-2 size-4" />
+
                             Remove Worker
+
                         </DropdownMenuItem>
 
                     </DropdownMenuContent>
@@ -629,6 +741,7 @@ function BookingRow({
     );
 
 }
+
 
 /* -------------------------------------------------------------------------- */
 /* Assign Worker Dialog                                                       */
@@ -653,10 +766,8 @@ function AssignWorkerDialog({
     const [workerId, setWorkerId] =
         useState("");
 
-
     const [isSubmitting, setIsSubmitting] =
         useState(false);
-
 
     const [error, setError] =
         useState<string | null>(null);
@@ -719,17 +830,17 @@ function AssignWorkerDialog({
             setError(null);
 
 
-            /*
-             * Replace these with the values
-             * from your authenticated user /
-             * tenant context.
-             */
-
             await createBooking({
-                tenantId: "",
-                shiftRoleId: role.id,
+                tenantId:
+                    CURRENT_AGENCY_ID,
+
+                shiftRoleId:
+                    role.id,
+
                 workerId,
-                assignedById: "",
+
+                assignedById:
+                    CURRENT_USER_ID,
             });
 
 
@@ -769,7 +880,9 @@ function AssignWorkerDialog({
 
         }
 
-        onOpenChange(nextOpen);
+        onOpenChange(
+            nextOpen
+        );
 
     }
 
@@ -839,7 +952,9 @@ function AssignWorkerDialog({
                                     );
 
                                     if (error) {
-                                        setError(null);
+                                        setError(
+                                            null
+                                        );
                                     }
 
                                 }}
@@ -906,6 +1021,7 @@ function AssignWorkerDialog({
 
 
                     {error && (
+
                         <div className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2">
 
                             <p className="text-sm text-destructive">
@@ -913,6 +1029,7 @@ function AssignWorkerDialog({
                             </p>
 
                         </div>
+
                     )}
 
 

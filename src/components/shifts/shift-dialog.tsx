@@ -23,7 +23,7 @@ import type {
 type ShiftDialogProps = {
     shift?: Shift;
 
-    eventId?: string;
+    eventId: string;
 
     open?: boolean;
 

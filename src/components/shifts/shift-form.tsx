@@ -24,9 +24,6 @@ import {
 
 const shiftSchema = z
     .object({
-        eventId: z
-            .string()
-            .min(1, "Event is required"),
 
         name: z
             .string()
@@ -38,21 +35,32 @@ const shiftSchema = z
 
         startDateTime: z
             .string()
-            .min(1, "Start date and time is required"),
+            .min(
+                1,
+                "Start date and time is required"
+            ),
 
         endDateTime: z
             .string()
-            .min(1, "End date and time is required"),
+            .min(
+                1,
+                "End date and time is required"
+            ),
 
         status: z
             .nativeEnum(ShiftStatus),
 
         isActive: z.boolean(),
+
     })
     .refine(
         (data) =>
-            new Date(data.endDateTime) >
-            new Date(data.startDateTime),
+            new Date(
+                data.endDateTime
+            ) >
+            new Date(
+                data.startDateTime
+            ),
         {
             message:
                 "End date and time must be after the start date and time.",
@@ -67,7 +75,7 @@ type ShiftFormValues =
 
 type ShiftFormProps = {
     shift?: Shift;
-    eventId?: string;
+    eventId: string;
     onSuccess: () => void;
     onCancel: () => void;
 };
@@ -76,32 +84,43 @@ type ShiftFormProps = {
 function formatDateTimeLocal(
     value?: string | null
 ): string {
+
     if (!value) {
         return "";
     }
 
     const date = new Date(value);
 
-    if (Number.isNaN(date.getTime())) {
+    if (
+        Number.isNaN(
+            date.getTime()
+        )
+    ) {
         return "";
     }
 
-    const year = date.getFullYear();
-    const month = String(
-        date.getMonth() + 1
-    ).padStart(2, "0");
+    const year =
+        date.getFullYear();
 
-    const day = String(
-        date.getDate()
-    ).padStart(2, "0");
+    const month =
+        String(
+            date.getMonth() + 1
+        ).padStart(2, "0");
 
-    const hours = String(
-        date.getHours()
-    ).padStart(2, "0");
+    const day =
+        String(
+            date.getDate()
+        ).padStart(2, "0");
 
-    const minutes = String(
-        date.getMinutes()
-    ).padStart(2, "0");
+    const hours =
+        String(
+            date.getHours()
+        ).padStart(2, "0");
+
+    const minutes =
+        String(
+            date.getMinutes()
+        ).padStart(2, "0");
 
     return `${year}-${month}-${day}T${hours}:${minutes}`;
 }
@@ -113,6 +132,7 @@ export function ShiftForm({
     onSuccess,
     onCancel,
 }: ShiftFormProps) {
+
     const [submitError, setSubmitError] =
         useState<string | null>(null);
 
@@ -126,46 +146,13 @@ export function ShiftForm({
         },
         reset,
     } = useForm<ShiftFormValues>({
-        resolver: zodResolver(
-            shiftSchema
-        ),
+
+        resolver:
+            zodResolver(
+                shiftSchema
+            ),
 
         defaultValues: {
-            eventId: shift?.eventId ?? "",
-            name: shift?.name ?? "",
-            description:
-                shift?.description ?? "",
-
-            startDateTime:
-                formatDateTimeLocal(
-                    shift?.startDateTime
-                ),
-
-            endDateTime:
-                formatDateTimeLocal(
-                    shift?.endDateTime
-                ),
-
-            status:
-                shift?.status ??
-                ShiftStatus.Open,
-
-            isActive:
-                shift?.isActive ??
-                true,
-        },
-    });
-
-
-    /*
-     * Reset form when editing
-     * another shift.
-     */
-
-    useEffect(() => {
-        reset({
-            eventId:
-                shift?.eventId ?? "",
 
             name:
                 shift?.name ?? "",
@@ -190,21 +177,74 @@ export function ShiftForm({
             isActive:
                 shift?.isActive ??
                 true,
+
+        },
+
+    });
+
+
+    useEffect(() => {
+
+        reset({
+
+            name:
+                shift?.name ?? "",
+
+            description:
+                shift?.description ?? "",
+
+            startDateTime:
+                formatDateTimeLocal(
+                    shift?.startDateTime
+                ),
+
+            endDateTime:
+                formatDateTimeLocal(
+                    shift?.endDateTime
+                ),
+
+            status:
+                shift?.status ??
+                ShiftStatus.Open,
+
+            isActive:
+                shift?.isActive ??
+                true,
+
         });
-    }, [shift, reset]);
+
+    }, [
+        shift,
+        reset,
+    ]);
 
 
     const onSubmit = async (
         values: ShiftFormValues
     ) => {
+
         setSubmitError(null);
 
+
+        if (!eventId) {
+
+            setSubmitError(
+                "Unable to create shift because the event could not be identified."
+            );
+
+            return;
+        }
+
+
         try {
+
             if (shift) {
+
                 await updateShift(
                     shift.id,
                     {
-                        name: values.name,
+                        name:
+                            values.name,
 
                         description:
                             values.description ||
@@ -227,13 +267,22 @@ export function ShiftForm({
                             values.isActive,
                     }
                 );
+
             } else {
+
                 await createShift({
+
                     tenantId:
                         CURRENT_TENANT_ID,
 
+                    /*
+                     * eventId comes directly from
+                     * the Event page.
+                     *
+                     * It is never entered by the user.
+                     */
                     eventId:
-                        values.eventId,
+                        eventId,
 
                     name:
                         values.name,
@@ -251,11 +300,16 @@ export function ShiftForm({
                         new Date(
                             values.endDateTime
                         ).toISOString(),
+
                 });
+
             }
 
+
             onSuccess();
+
         } catch (error) {
+
             console.error(
                 "Failed to save shift:",
                 error
@@ -266,55 +320,40 @@ export function ShiftForm({
                     ? "Failed to update shift. Please try again."
                     : "Failed to create shift. Please try again."
             );
+
         }
+
     };
 
 
     return (
+
         <form
-            onSubmit={handleSubmit(
-                onSubmit
-            )}
+            onSubmit={
+                handleSubmit(
+                    onSubmit
+                )
+            }
             className="space-y-5"
         >
 
             {/* Error */}
 
             {submitError && (
+
                 <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
+
                     {submitError}
+
                 </div>
+
             )}
 
 
-            {/* Event */}
+            {/* Shift Name */}
 
             <div className="space-y-2">
-                <Label htmlFor="eventId">
-                    Event *
-                </Label>
 
-                <Input
-                    id="eventId"
-                    placeholder="Event ID"
-                    {...register("eventId")}
-                    disabled={!!shift}
-                />
-
-                {errors.eventId && (
-                    <p className="text-sm text-destructive">
-                        {
-                            errors.eventId
-                                .message
-                        }
-                    </p>
-                )}
-            </div>
-
-
-            {/* Name */}
-
-            <div className="space-y-2">
                 <Label htmlFor="name">
                     Shift Name *
                 </Label>
@@ -326,19 +365,26 @@ export function ShiftForm({
                 />
 
                 {errors.name && (
+
                     <p className="text-sm text-destructive">
+
                         {
-                            errors.name
+                            errors
+                                .name
                                 .message
                         }
+
                     </p>
+
                 )}
+
             </div>
 
 
             {/* Description */}
 
             <div className="space-y-2">
+
                 <Label htmlFor="description">
                     Description
                 </Label>
@@ -353,13 +399,19 @@ export function ShiftForm({
                 />
 
                 {errors.description && (
+
                     <p className="text-sm text-destructive">
+
                         {
-                            errors.description
+                            errors
+                                .description
                                 .message
                         }
+
                     </p>
+
                 )}
+
             </div>
 
 
@@ -368,6 +420,7 @@ export function ShiftForm({
             <div className="grid gap-4 sm:grid-cols-2">
 
                 <div className="space-y-2">
+
                     <Label htmlFor="startDateTime">
                         Start Date & Time *
                     </Label>
@@ -381,18 +434,24 @@ export function ShiftForm({
                     />
 
                     {errors.startDateTime && (
+
                         <p className="text-sm text-destructive">
+
                             {
                                 errors
                                     .startDateTime
                                     .message
                             }
+
                         </p>
+
                     )}
+
                 </div>
 
 
                 <div className="space-y-2">
+
                     <Label htmlFor="endDateTime">
                         End Date & Time *
                     </Label>
@@ -406,14 +465,19 @@ export function ShiftForm({
                     />
 
                     {errors.endDateTime && (
+
                         <p className="text-sm text-destructive">
+
                             {
                                 errors
                                     .endDateTime
                                     .message
                             }
+
                         </p>
+
                     )}
+
                 </div>
 
             </div>
@@ -422,11 +486,13 @@ export function ShiftForm({
             {/* Edit-only settings */}
 
             {shift && (
+
                 <div className="grid gap-4 sm:grid-cols-2">
 
                     {/* Status */}
 
                     <div className="space-y-2">
+
                         <Label htmlFor="status">
                             Status
                         </Label>
@@ -442,6 +508,7 @@ export function ShiftForm({
                             )}
                             className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         >
+
                             <option
                                 value={
                                     ShiftStatus.Open
@@ -481,25 +548,32 @@ export function ShiftForm({
                             >
                                 Cancelled
                             </option>
+
                         </select>
 
                         {errors.status && (
+
                             <p className="text-sm text-destructive">
+
                                 {
                                     errors
                                         .status
                                         .message
                                 }
+
                             </p>
+
                         )}
+
                     </div>
 
 
                     {/* Active */}
 
                     <div className="space-y-2">
+
                         <Label htmlFor="isActive">
-                            Status
+                            Active
                         </Label>
 
                         <select
@@ -517,6 +591,7 @@ export function ShiftForm({
                             )}
                             className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         >
+
                             <option value="true">
                                 Active
                             </option>
@@ -524,10 +599,13 @@ export function ShiftForm({
                             <option value="false">
                                 Inactive
                             </option>
+
                         </select>
+
                     </div>
 
                 </div>
+
             )}
 
 
@@ -538,16 +616,24 @@ export function ShiftForm({
                 <Button
                     type="button"
                     variant="outline"
-                    onClick={onCancel}
-                    disabled={isSubmitting}
+                    onClick={
+                        onCancel
+                    }
+                    disabled={
+                        isSubmitting
+                    }
                 >
                     Cancel
                 </Button>
 
                 <Button
                     type="submit"
-                    disabled={isSubmitting}
+                    disabled={
+                        isSubmitting ||
+                        !eventId
+                    }
                 >
+
                     {isSubmitting
                         ? shift
                             ? "Saving..."
@@ -555,10 +641,12 @@ export function ShiftForm({
                         : shift
                             ? "Save Changes"
                             : "Add Shift"}
+
                 </Button>
 
             </div>
 
         </form>
+
     );
 }

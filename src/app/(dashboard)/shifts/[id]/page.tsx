@@ -29,6 +29,7 @@ import {
 import {
     ShiftRoles,
 } from "@/components/shifts/shift-roles";
+import { ShiftAttendance } from "@/components/shifts/shift-attendance";
 
 export default function ShiftDetailsPage() {
     const params = useParams();
@@ -250,7 +251,9 @@ export default function ShiftDetailsPage() {
             <ShiftRoles
                 shiftId={shift.id}
             />
-
+            <ShiftAttendance
+                shiftId={shift.id}
+            />
             {/* Edit Shift Dialog */}
 
             <ShiftDialog
