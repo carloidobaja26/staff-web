@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+
 import {
     Dialog,
     DialogContent,
@@ -13,30 +14,48 @@ import {
 } from "@/components/ui/dialog";
 
 import { ShiftForm } from "./shift-form";
-import type { Shift } from "@/lib/api/shifts";
+
+import type {
+    Shift,
+} from "@/lib/api/shifts";
+
 
 type ShiftDialogProps = {
     shift?: Shift;
+
+    eventId?: string;
+
     open?: boolean;
-    onOpenChange?: (open: boolean) => void;
+
+    onOpenChange?: (
+        open: boolean
+    ) => void;
+
     onSuccess: () => void;
 };
 
+
 export function ShiftDialog({
     shift,
+    eventId,
     open,
     onOpenChange,
     onSuccess,
 }: ShiftDialogProps) {
-    const [internalOpen, setInternalOpen] =
-        useState(false);
+    const [
+        internalOpen,
+        setInternalOpen,
+    ] = useState(false);
+
 
     const isControlled =
         open !== undefined;
 
+
     const dialogOpen = isControlled
         ? open
         : internalOpen;
+
 
     const handleOpenChange = (
         value: boolean
@@ -48,16 +67,20 @@ export function ShiftDialog({
         }
     };
 
+
     const handleSuccess = () => {
         handleOpenChange(false);
+
         onSuccess();
     };
+
 
     return (
         <Dialog
             open={dialogOpen}
             onOpenChange={handleOpenChange}
         >
+
             {!isControlled && (
                 <DialogTrigger asChild>
                     <Button>
@@ -67,7 +90,9 @@ export function ShiftDialog({
                 </DialogTrigger>
             )}
 
+
             <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+
                 <DialogHeader>
                     <DialogTitle>
                         {shift
@@ -76,14 +101,18 @@ export function ShiftDialog({
                     </DialogTitle>
                 </DialogHeader>
 
+
                 <ShiftForm
                     shift={shift}
+                    eventId={eventId}
                     onSuccess={handleSuccess}
                     onCancel={() =>
                         handleOpenChange(false)
                     }
                 />
+
             </DialogContent>
+
         </Dialog>
     );
 }

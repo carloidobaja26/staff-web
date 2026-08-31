@@ -67,6 +67,7 @@ type ShiftFormValues =
 
 type ShiftFormProps = {
     shift?: Shift;
+    eventId?: string;
     onSuccess: () => void;
     onCancel: () => void;
 };
@@ -108,6 +109,7 @@ function formatDateTimeLocal(
 
 export function ShiftForm({
     shift,
+    eventId,
     onSuccess,
     onCancel,
 }: ShiftFormProps) {

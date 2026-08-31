@@ -27,12 +27,14 @@ import { DeleteShiftDialog } from "./delete-shift-dialog";
 
 
 type ShiftActionsProps = {
+    eventId?: string;
     shift: Shift;
     onSuccess: () => void;
 };
 
 
 export function ShiftActions({
+    eventId,
     shift,
     onSuccess,
 }: ShiftActionsProps) {
@@ -112,6 +114,7 @@ export function ShiftActions({
 
             <ShiftDialog
                 shift={shift}
+                eventId={eventId}
                 open={editOpen}
                 onOpenChange={setEditOpen}
                 onSuccess={onSuccess}

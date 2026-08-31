@@ -28,6 +28,7 @@ import {
 } from "@/lib/api/events";
 
 import { EventDialog } from "@/components/events/event-dialog";
+import { EventShifts } from "@/components/events/event-shifts";
 
 
 export default function EventDetailsPage() {
@@ -294,7 +295,7 @@ export default function EventDetailsPage() {
                 </div>
             )}
 
-
+            <EventShifts eventId={event.id} />
             {/* Edit Event Dialog */}
             <EventDialog
                 event={event}

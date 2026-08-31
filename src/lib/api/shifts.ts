@@ -77,6 +77,17 @@ export async function getShifts(
     return response.data.data;
 }
 
+export async function getEventShifts(
+    eventId: string
+): Promise<Shift[]> {
+    const response = await apiClient.get<
+        ApiResponse<Shift[]>
+    >(
+        `/api/event/${eventId}/shifts`
+    );
+
+    return response.data.data;
+}
 
 /*
  * Calendar
