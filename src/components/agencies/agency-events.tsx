@@ -624,11 +624,11 @@ export function AgencyEvents({
                                                             disabled={
                                                                 isLoadingEvent
                                                             }
-                                                            onClick={() =>
-                                                                handleEditEvent(
-                                                                    event
-                                                                )
-                                                            }
+                                                            // onClick={() =>
+                                                            //     handleEditEvent(
+                                                            //         event
+                                                            //     )
+                                                            // }
                                                         >
 
                                                             <Pencil className="mr-2 size-4" />
@@ -646,11 +646,11 @@ export function AgencyEvents({
                                                             variant="outline"
                                                             size="sm"
                                                             className="text-destructive hover:text-destructive"
-                                                            onClick={() =>
-                                                                setDeleteEventTarget(
-                                                                    event
-                                                                )
-                                                            }
+                                                            // onClick={() =>
+                                                            //     setDeleteEventTarget(
+                                                            //         event
+                                                            //     )
+                                                            // }
                                                         >
 
                                                             <Trash2 className="mr-2 size-4" />
@@ -977,7 +977,7 @@ export function AgencyEvents({
             {/* Delete Event Dialog                                               */}
             {/* ---------------------------------------------------------------- */}
 
-            {deleteEventTarget && (
+            {/* {deleteEventTarget && (
 
                 <DeleteEventDialog
                     event={deleteEventTarget}
@@ -1004,7 +1004,7 @@ export function AgencyEvents({
                     }}
                 />
 
-            )}
+            )} */}
 
         </div>
     );
