@@ -193,6 +193,7 @@ export function ShiftTable() {
 
 
                 <ShiftDialog
+                    eventId=""
                     onSuccess={() => {
                         queryClient.invalidateQueries({
                             queryKey: ["shifts"],
@@ -343,6 +344,7 @@ export function ShiftTable() {
 
                                         <td className="px-4 py-4">
                                             <ShiftActions
+                                                eventId=""
                                                 shift={shift}
                                                 onSuccess={() => {
                                                     queryClient.invalidateQueries({
