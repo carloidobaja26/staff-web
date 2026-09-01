@@ -75,6 +75,7 @@ return (
             </DialogHeader>
 
             <EventForm
+                agencyId={""}
                 event={event}
                 clientId={clientId}
                 onSuccess={handleSuccess}
