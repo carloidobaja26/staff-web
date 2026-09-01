@@ -36,21 +36,21 @@ export const navigation: NavigationGroup[] = [
   {
     label: "Workforce",
     items: [
-      {
-        label: "Workers",
-        href: "/workers",
-        icon: Users,
-      },
+      // {
+      //   label: "Workers",
+      //   href: "/workers",
+      //   icon: Users,
+      // },
       {
         label: "Agencies",
         href: "/agencies",
         icon: Building2,
       },
-      {
-        label: "Clients",
-        href: "/clients",
-        icon: UserRound,
-      },
+      // {
+      //   label: "Clients",
+      //   href: "/clients",
+      //   icon: UserRound,
+      // },
       {
         label: "Venues",
         href: "/venues",
@@ -61,26 +61,26 @@ export const navigation: NavigationGroup[] = [
   {
     label: "Operations",
     items: [
-      {
-        label: "Events",
-        href: "/events",
-        icon: CalendarDays,
-      },
-      {
-        label: "Shifts",
-        href: "/shifts",
-        icon: ClipboardCheck,
-      },
-      {
-        label: "Bookings",
-        href: "/bookings",
-        icon: ClipboardCheck,
-      },
-      {
-        label: "Attendance",
-        href: "/attendance",
-        icon: ClipboardCheck,
-      },
+      // {
+      //   label: "Events",
+      //   href: "/events",
+      //   icon: CalendarDays,
+      // },
+      // {
+      //   label: "Shifts",
+      //   href: "/shifts",
+      //   icon: ClipboardCheck,
+      // },
+      // {
+      //   label: "Bookings",
+      //   href: "/bookings",
+      //   icon: ClipboardCheck,
+      // },
+      // {
+      //   label: "Attendance",
+      //   href: "/attendance",
+      //   icon: ClipboardCheck,
+      // },
       {
         label: "Payroll",
         href: "/payroll",

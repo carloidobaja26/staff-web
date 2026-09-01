@@ -382,7 +382,6 @@ export function ClientTable() {
                     </div>
 
                     {/* Pagination */}
-                    {/* Pagination */}
                     <div className="flex flex-col gap-3 border-t px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                         {/* Left side */}
                         <div className="flex items-center gap-4">

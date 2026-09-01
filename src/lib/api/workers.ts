@@ -40,9 +40,6 @@ export type CreateWorkerRequest = {
 };
 
 export type UpdateWorkerRequest = {
-    tenantId: string;
-    agencyId: string;
-
     firstName: string;
     lastName: string;
     email: string;

@@ -72,6 +72,7 @@ type EventFormValues =
     z.infer<typeof eventSchema>;
 
 type EventFormProps = {
+    agencyId: string;
     event?: Event;
 
     clientId?: string;
@@ -122,6 +123,7 @@ function toDateTimeLocal(
 }
 
 export function EventForm({
+    agencyId,
     event,
     clientId,
     onSuccess,
@@ -156,7 +158,7 @@ export function EventForm({
     } = useQuery({
         queryKey: ["agencies", CURRENT_TENANT_ID],
         queryFn: () =>
-            getAgenciesByTenant(CURRENT_TENANT_ID),
+            getAgenciesByTenant(),
     });
 
     const {

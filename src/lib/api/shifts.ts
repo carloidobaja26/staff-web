@@ -141,7 +141,7 @@ export async function getShiftsByTenant(
 ): Promise<Shift[]> {
     const response =
         await apiClient.get<ApiResponse<Shift[]>>(
-            `/api/tenant/${tenantId}/shifts`
+            `/api/shifts`
         );
 
     return response.data.data;

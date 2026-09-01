@@ -116,7 +116,7 @@ export async function getEventsByTenant(
         await apiClient.get<
             ApiResponse<Event[]>
         >(
-            `/api/tenant/${tenantId}/events`
+            `/api/events`
         );
 
     return response.data.data;

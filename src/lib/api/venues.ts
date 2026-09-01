@@ -22,7 +22,7 @@ export async function getVenuesByTenant(
     const response = await apiClient.get<
         ApiResponse<Venue[]>
     >(
-        `/api/tenants/${tenantId}/venues`
+        `/api/venues`
     );
 
     return response.data.data;

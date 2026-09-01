@@ -33,12 +33,15 @@ const clientSchema = z.object({
 type ClientFormValues = z.infer<typeof clientSchema>;
 
 type ClientFormProps = {
+    agencyId?: string;
     client?: Client;
     onSuccess: () => void;
     onCancel: () => void;
 };
 
+
 export function ClientForm({
+    agencyId,
     client,
     onSuccess,
     onCancel,
@@ -77,7 +80,7 @@ const onSubmit = async (values: ClientFormValues) => {
     if (client) {
       await updateClient(client.id, {
         tenantId: CURRENT_TENANT_ID,
-        agencyId: CURRENT_AGENCY_ID,
+        agencyId: agencyId,
         clientNumber: values.clientNumber,
         name: values.name,
         companyName: values.companyName || undefined,
@@ -90,7 +93,7 @@ const onSubmit = async (values: ClientFormValues) => {
     } else {
       await createClient({
         tenantId: CURRENT_TENANT_ID,
-        agencyId: CURRENT_AGENCY_ID,
+        agencyId: agencyId,
         clientNumber: values.clientNumber,
         name: values.name,
         companyName: values.companyName || undefined,
