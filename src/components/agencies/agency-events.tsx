@@ -1,22 +1,15 @@
 "use client";
 
-import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import {
+    CalendarDays,
+    Search,
+} from "lucide-react";
 
 import {
     useQuery,
     useQueryClient,
 } from "@tanstack/react-query";
-
-import {
-    CalendarDays,
-    ChevronLeft,
-    ChevronRight,
-    Pencil,
-    Plus,
-    Search,
-    Trash2,
-} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,150 +23,161 @@ import {
 } from "@/components/ui/select";
 
 import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog";
-
-import {
-    getAgencyEventsPaginated,
-    type AgencyEvent,
-} from "@/lib/api/agencies";
-
-import {
-    getEvent,
-    type Event,
+    EventStatus,
+    EventType,
+    getEvents,
 } from "@/lib/api/events";
 
-import { EventForm } from "@/components/events/event-form";
-import { DeleteEventDialog } from "@/components/events/delete-event-dialog";
+import { EventDialog } from "../events/event-dialog";
+import { EventActions } from "../events/event-actions";
+import { getAgencyEventsPaginated } from "@/lib/api/agencies";
+import { useAgencyStore } from "@/stores/agency-store";
 
-import { getApiErrorMessage } from "@/lib/helpers/api-error";
 
-
-type AgencyEventsProps = {
-    agencyId: string;
+const statusLabels: Record<EventStatus, string> = {
+    [EventStatus.Draft]: "Draft",
+    [EventStatus.Scheduled]: "Scheduled",
+    [EventStatus.Ongoing]: "Ongoing",
+    [EventStatus.Completed]: "Completed",
+    [EventStatus.Cancelled]: "Cancelled",
 };
 
 
-export function AgencyEvents({
-    agencyId,
-}: AgencyEventsProps) {
+const typeLabels: Record<EventType, string> = {
+    [EventType.Corporate]: "Corporate",
+    [EventType.Concert]: "Concert",
+    [EventType.Festival]: "Festival",
+    [EventType.Wedding]: "Wedding",
+    [EventType.Sports]: "Sports",
+    [EventType.Exhibition]: "Exhibition",
+    [EventType.TradeShow]: "Trade Show",
+    [EventType.Private]: "Private",
+    [EventType.Other]: "Other",
+};
+
+
+function getStatusClass(
+    status: EventStatus
+) {
+    switch (status) {
+        case EventStatus.Draft:
+            return "bg-muted text-muted-foreground";
+
+        case EventStatus.Scheduled:
+            return "bg-primary/10 text-primary";
+
+        case EventStatus.Ongoing:
+            return "bg-yellow-500/10 text-yellow-600";
+
+        case EventStatus.Completed:
+            return "bg-green-500/10 text-green-600";
+
+        case EventStatus.Cancelled:
+            return "bg-destructive/10 text-destructive";
+
+        default:
+            return "bg-muted text-muted-foreground";
+    }
+}
+
+
+function formatDateTime(
+    value: string
+) {
+    return new Date(value).toLocaleString(
+        undefined,
+        {
+            dateStyle: "medium",
+            timeStyle: "short",
+        }
+    );
+}
+
+
+export function AgencyEvents() {
+    const agencyId = useAgencyStore(
+        (state) => state.agencyId
+    );
 
     const queryClient =
         useQueryClient();
 
+    const [pageNumber, setPageNumber] =
+        useState(1);
 
-    /* ---------------------------------------------------------------------- */
-    /* State                                                                  */
-    /* ---------------------------------------------------------------------- */
+    const [pageSize, setPageSize] =
+        useState(10);
 
-    const [
-        pageNumber,
-        setPageNumber,
-    ] = useState(1);
-
+    const [search, setSearch] =
+        useState("");
 
     const [
-        pageSize,
-        setPageSize,
-    ] = useState(10);
-
-
-    const [
-        search,
-        setSearch,
+        debouncedSearch,
+        setDebouncedSearch,
     ] = useState("");
 
 
-    const [
-        createOpen,
-        setCreateOpen,
-    ] = useState(false);
+    /*
+     * Debounce search
+     */
+
+    useEffect(() => {
+        const timer =
+            setTimeout(() => {
+                setDebouncedSearch(
+                    search
+                );
+
+                setPageNumber(1);
+            }, 400);
+
+        return () =>
+            clearTimeout(timer);
+    }, [search]);
 
 
     /*
-     * Full event used by EventForm.
-     *
-     * The agency events endpoint returns AgencyEvent,
-     * while EventForm expects the complete Event.
-     */
-    const [
-        editEvent,
-        setEditEvent,
-    ] = useState<Event | null>(null);
+    * Get events by agencyId
+    */
+const {
+    data,
+    isLoading,
+    isError,
+    error,
+    refetch,
+} = useQuery({
+    queryKey: [
+        "events",
+        agencyId,
+        pageNumber,
+        pageSize,
+        debouncedSearch,
+    ],
 
+    queryFn: () =>
+        getAgencyEventsPaginated(
+            agencyId!,
+            {
+                pageNumber,
+                pageSize,
+                search: debouncedSearch || undefined,
+            }
+        ),
 
-    /*
-     * AgencyEvent is enough for deleting because
-     * the delete operation only needs the event id
-     * and basic event information.
-     */
-    const [
-        deleteEventTarget,
-        setDeleteEventTarget,
-    ] = useState<AgencyEvent | null>(null);
-
-
-    const [
-        isLoadingEvent,
-        setIsLoadingEvent,
-    ] = useState(false);
-
-
-    /* ---------------------------------------------------------------------- */
-    /* Agency Events                                                          */
-    /* ---------------------------------------------------------------------- */
-
-    const {
-        data,
-        isLoading,
-        isFetching,
-        isError,
-        error,
-    } = useQuery({
-
-        queryKey: [
-            "agency-events",
-            agencyId,
-            pageNumber,
-            pageSize,
-            search,
-        ],
-
-        queryFn: () =>
-            getAgencyEventsPaginated(
-                agencyId,
-                {
-                    pageNumber,
-                    pageSize,
-                    search:
-                        search.trim() ||
-                        undefined,
-                }
-            ),
-
-        enabled: !!agencyId,
-
-    });
+    enabled: !!agencyId,
+});
 
 
     const events =
         data?.items ?? [];
-
 
     const totalNumber =
         data?.totalNumber ?? 0;
 
 
     const totalPages =
-        Math.max(
-            1,
-            Math.ceil(
-                totalNumber /
-                pageSize
-            )
+        Math.ceil(
+            totalNumber / pageSize
         );
 
 
@@ -181,112 +185,72 @@ export function AgencyEvents({
         totalNumber === 0
             ? 0
             : (pageNumber - 1) *
-                  pageSize +
+                pageSize +
               1;
 
 
     const endItem =
         Math.min(
-            pageNumber *
-                pageSize,
+            pageNumber * pageSize,
             totalNumber
         );
 
 
-    /* ---------------------------------------------------------------------- */
-    /* Search                                                                 */
-    /* ---------------------------------------------------------------------- */
+    /*
+     * Loading
+     */
 
-    function handleSearchChange(
-        value: string
-    ) {
+    if (isLoading) {
+        return (
+            <div className="rounded-xl border bg-card p-8 text-center">
 
-        setSearch(value);
+                <p className="text-sm text-muted-foreground">
+                    Loading events...
+                </p>
 
-        setPageNumber(1);
-
-    }
-
-
-    /* ---------------------------------------------------------------------- */
-    /* Page Size                                                               */
-    /* ---------------------------------------------------------------------- */
-
-    function handlePageSizeChange(
-        value: string
-    ) {
-
-        setPageSize(
-            Number(value)
+            </div>
         );
-
-        setPageNumber(1);
-
     }
 
 
-    /* ---------------------------------------------------------------------- */
-    /* Refresh                                                                */
-    /* ---------------------------------------------------------------------- */
+    /*
+     * Error
+     */
 
-    function refreshEvents() {
+    if (isError) {
+        return (
+            <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-8 text-center">
 
-        queryClient.invalidateQueries({
-            queryKey: [
-                "agency-events",
-                agencyId,
-            ],
-        });
+                <p className="text-sm font-semibold text-destructive">
+                    Failed to load events
+                </p>
 
+                <p className="mt-1 text-sm text-muted-foreground">
+                    {error instanceof Error
+                        ? error.message
+                        : "Something went wrong."}
+                </p>
+
+                <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-4"
+                    onClick={() =>
+                        refetch()
+                    }
+                >
+                    Try Again
+                </Button>
+
+            </div>
+        );
     }
 
-
-    /* ---------------------------------------------------------------------- */
-    /* Edit Event                                                              */
-    /* ---------------------------------------------------------------------- */
-
-    async function handleEditEvent(
-        agencyEvent: AgencyEvent
-    ) {
-
-        try {
-
-            setIsLoadingEvent(true);
-
-            const event =
-                await getEvent(
-                    agencyEvent.id
-                );
-
-            setEditEvent(event);
-
-        } catch (error) {
-
-            console.error(
-                "Failed to load event:",
-                error
-            );
-
-        } finally {
-
-            setIsLoadingEvent(false);
-
-        }
-
-    }
-
-
-    /* ---------------------------------------------------------------------- */
-    /* Render                                                                 */
-    /* ---------------------------------------------------------------------- */
 
     return (
         <div className="space-y-4">
 
-
-            {/* ---------------------------------------------------------------- */}
-            {/* Search + Add Event                                                */}
-            {/* ---------------------------------------------------------------- */}
+            {/* Search + Add Event */}
 
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 
@@ -294,25 +258,16 @@ export function AgencyEvents({
 
                 <div className="relative w-full sm:max-w-sm">
 
-                    <Search
-                        className="
-                            absolute
-                            left-3
-                            top-1/2
-                            size-4
-                            -translate-y-1/2
-                            text-muted-foreground
-                        "
-                    />
+                    <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
 
                     <Input
+                        placeholder="Search events..."
                         value={search}
                         onChange={(event) =>
-                            handleSearchChange(
+                            setSearch(
                                 event.target.value
                             )
                         }
-                        placeholder="Search events..."
                         className="pl-9"
                     />
 
@@ -321,799 +276,407 @@ export function AgencyEvents({
 
                 {/* Add Event */}
 
-                <Button
-                    onClick={() =>
-                        setCreateOpen(true)
-                    }
-                >
-
-                    <Plus className="mr-2 size-4" />
-
-                    Add Event
-
-                </Button>
+                <EventDialog
+                    onSuccess={() => {
+                        queryClient.invalidateQueries({
+                            queryKey: ["events"],
+                        });
+                    }}
+                />
 
             </div>
 
 
-            {/* ---------------------------------------------------------------- */}
-            {/* Loading                                                           */}
-            {/* ---------------------------------------------------------------- */}
+            {/* Table */}
 
-            {isLoading && (
+            <div className="rounded-xl border bg-card">
 
-                <div className="rounded-lg border p-8 text-center">
+                <div className="overflow-x-auto">
 
-                    <p className="text-sm text-muted-foreground">
-                        Loading events...
-                    </p>
+                    <table className="w-full">
+
+                        <thead className="border-b bg-muted/30">
+
+                            <tr>
+
+                                <th className="px-4 py-3 text-left text-sm font-medium">
+                                    Event
+                                </th>
+
+                                <th className="px-4 py-3 text-left text-sm font-medium">
+                                    Event Number
+                                </th>
+
+                                <th className="px-4 py-3 text-left text-sm font-medium">
+                                    Type
+                                </th>
+
+                                <th className="px-4 py-3 text-left text-sm font-medium">
+                                    Schedule
+                                </th>
+
+                                <th className="px-4 py-3 text-left text-sm font-medium">
+                                    Status
+                                </th>
+
+                                <th className="px-4 py-3 text-left text-sm font-medium">
+                                    Active
+                                </th>
+
+                                <th className="px-4 py-3 text-right text-sm font-medium">
+                                    Action
+                                </th>
+
+                            </tr>
+
+                        </thead>
+
+
+                        <tbody className="divide-y">
+
+                            {events.map(
+                                (event) => (
+                                    <tr
+                                        key={
+                                            event.id
+                                        }
+                                        className="transition-colors hover:bg-muted/30"
+                                    >
+
+                                        {/* Event */}
+
+                                        <td className="px-4 py-4">
+
+                                            <div className="flex items-center gap-3">
+
+                                                <div className="hidden rounded-md bg-muted p-2 sm:block">
+
+                                                    <CalendarDays className="size-4 text-muted-foreground" />
+
+                                                </div>
+
+                                                <div className="min-w-0">
+
+                                                    <p className="font-medium">
+                                                        {
+                                                            event.name
+                                                        }
+                                                    </p>
+
+                                                    {event.description && (
+                                                        <p className="mt-1 max-w-[250px] truncate text-sm text-muted-foreground">
+                                                            {
+                                                                event.description
+                                                            }
+                                                        </p>
+                                                    )}
+
+                                                </div>
+
+                                            </div>
+
+                                        </td>
+
+
+                                        {/* Event Number */}
+
+                                        <td className="px-4 py-4 text-sm text-muted-foreground">
+                                            {
+                                                event.eventNumber
+                                            }
+                                        </td>
+
+
+                                        {/* Type */}
+
+                                        <td className="px-4 py-4">
+
+                                            <span className="inline-flex rounded-full bg-muted px-2.5 py-1 text-xs font-medium">
+                                                {
+                                                    typeLabels[
+                                                        event.type
+                                                    ]
+                                                }
+                                            </span>
+
+                                        </td>
+
+
+                                        {/* Schedule */}
+
+                                        <td className="px-4 py-4">
+
+                                            <div className="text-sm">
+
+                                                <p className="font-medium">
+                                                    {
+                                                        formatDateTime(
+                                                            event.startDateTime
+                                                        )
+                                                    }
+                                                </p>
+
+                                                <p className="mt-1 text-muted-foreground">
+                                                    to{" "}
+                                                    {
+                                                        formatDateTime(
+                                                            event.endDateTime
+                                                        )
+                                                    }
+                                                </p>
+
+                                            </div>
+
+                                        </td>
+
+
+                                        {/* Status */}
+
+                                        <td className="px-4 py-4">
+
+                                            <span
+                                                className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${getStatusClass(
+                                                    event.status
+                                                )}`}
+                                            >
+                                                {
+                                                    statusLabels[
+                                                        event.status
+                                                    ]
+                                                }
+                                            </span>
+
+                                        </td>
+
+
+                                        {/* Active */}
+
+                                        <td className="px-4 py-4">
+
+                                            <span
+                                                className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${
+                                                    event.isActive
+                                                        ? "bg-primary/10 text-primary"
+                                                        : "bg-muted text-muted-foreground"
+                                                }`}
+                                            >
+                                                {
+                                                    event.isActive
+                                                        ? "Active"
+                                                        : "Inactive"
+                                                }
+                                            </span>
+
+                                        </td>
+
+
+                                        {/* Actions */}
+
+                                        <td className="px-4 py-4 text-right">
+
+                                            <EventActions
+                                                event={event}
+                                                onSuccess={() => {
+                                                    queryClient.invalidateQueries({
+                                                        queryKey: [
+                                                            "events",
+                                                        ],
+                                                    });
+                                                }}
+                                            />
+
+                                        </td>
+
+                                    </tr>
+                                )
+                            )}
+
+                        </tbody>
+
+                    </table>
 
                 </div>
 
-            )}
 
+                {/* Empty */}
 
-            {/* ---------------------------------------------------------------- */}
-            {/* Error                                                             */}
-            {/* ---------------------------------------------------------------- */}
+                {events.length === 0 && (
+                    <div className="border-t px-6 py-10 text-center">
 
-            {isError && (
+                        <div className="mx-auto flex size-10 items-center justify-center rounded-full bg-muted">
 
-                <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4">
+                            <CalendarDays className="size-5 text-muted-foreground" />
 
-                    <p className="text-sm font-medium text-destructive">
-                        Failed to load events.
-                    </p>
+                        </div>
 
-                    <p className="mt-1 text-sm text-muted-foreground">
-                        {getApiErrorMessage(
-                            error,
-                            "Unable to load agency events."
-                        )}
-                    </p>
-
-                </div>
-
-            )}
-
-
-            {/* ---------------------------------------------------------------- */}
-            {/* Empty                                                             */}
-            {/* ---------------------------------------------------------------- */}
-
-            {!isLoading &&
-                !isError &&
-                events.length === 0 && (
-
-                    <div className="rounded-lg border border-dashed p-8 text-center">
-
-                        <CalendarDays className="mx-auto size-8 text-muted-foreground" />
-
-                        <h3 className="mt-3 text-sm font-medium">
+                        <p className="mt-3 text-sm font-medium">
                             No events found
-                        </h3>
+                        </p>
 
                         <p className="mt-1 text-sm text-muted-foreground">
-                            This agency does not have any
-                            events yet.
+                            {debouncedSearch
+                                ? "Try a different search."
+                                : "Create your first event to get started."}
                         </p>
 
                     </div>
-
                 )}
 
 
-            {/* ---------------------------------------------------------------- */}
-            {/* Table                                                             */}
-            {/* ---------------------------------------------------------------- */}
+                {/* Pagination */}
 
-            {!isLoading &&
-                !isError &&
-                events.length > 0 && (
+                <div className="flex flex-col gap-3 border-t px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
 
-                    <div className="overflow-hidden rounded-lg border">
+                    <p className="text-sm text-muted-foreground">
 
-                        <div className="overflow-x-auto">
+                        Showing{" "}
 
-                            <table className="w-full">
+                        <span className="font-medium text-foreground">
+                            {startItem}–{endItem}
+                        </span>{" "}
 
-                                <thead className="border-b bg-muted/40">
+                        of{" "}
 
-                                    <tr>
+                        <span className="font-medium text-foreground">
+                            {totalNumber}
+                        </span>{" "}
 
-                                        <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
-                                            Event
-                                        </th>
+                        events
 
-                                        <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
-                                            Client
-                                        </th>
+                    </p>
 
-                                        <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
-                                            Start
-                                        </th>
 
-                                        <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
-                                            End
-                                        </th>
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
 
-                                        <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
-                                            Status
-                                        </th>
+                        {/* Page Size */}
 
-                                        <th className="px-4 py-3 text-right text-sm font-medium text-muted-foreground">
-                                            Actions
-                                        </th>
+                        <div className="flex items-center gap-2">
 
-                                    </tr>
+                            <span className="text-sm text-muted-foreground">
+                                Per page
+                            </span>
 
-                                </thead>
-
-
-                                <tbody>
-
-                                    {events.map(
-                                        (event) => (
-
-                                            <tr
-                                                key={
-                                                    event.id
-                                                }
-                                                className="
-                                                    border-b
-                                                    last:border-0
-                                                    transition-colors
-                                                    hover:bg-muted/40
-                                                "
-                                            >
-
-                                                {/* ------------------------------------------------ */}
-                                                {/* Event                                              */}
-                                                {/* ------------------------------------------------ */}
-
-                                                <td className="px-4 py-4">
-
-                                                    <Link
-                                                        href={`/events/${event.id}`}
-                                                        className="
-                                                            group
-                                                            flex
-                                                            items-center
-                                                            gap-3
-                                                        "
-                                                    >
-
-                                                        <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted">
-
-                                                            <CalendarDays className="size-4 text-muted-foreground" />
-
-                                                        </div>
-
-
-                                                        <div>
-
-                                                            <p className="font-medium group-hover:underline">
-
-                                                                {
-                                                                    event.name
-                                                                }
-
-                                                            </p>
-
-
-                                                            {event.eventNumber && (
-
-                                                                <p className="mt-1 text-xs text-muted-foreground">
-
-                                                                    {
-                                                                        event.eventNumber
-                                                                    }
-
-                                                                </p>
-
-                                                            )}
-
-                                                        </div>
-
-                                                    </Link>
-
-                                                </td>
-
-
-                                                {/* ------------------------------------------------ */}
-                                                {/* Client                                             */}
-                                                {/* ------------------------------------------------ */}
-
-                                                <td className="px-4 py-4">
-
-                                                    <span className="text-sm text-muted-foreground">
-
-                                                        {
-                                                            event.clientName ||
-                                                            "—"
-                                                        }
-
-                                                    </span>
-
-                                                </td>
-
-
-                                                {/* ------------------------------------------------ */}
-                                                {/* Start                                              */}
-                                                {/* ------------------------------------------------ */}
-
-                                                <td className="px-4 py-4">
-
-                                                    <span className="text-sm text-muted-foreground">
-
-                                                        {
-                                                            formatDateTime(
-                                                                event.startDateTime
-                                                            )
-                                                        }
-
-                                                    </span>
-
-                                                </td>
-
-
-                                                {/* ------------------------------------------------ */}
-                                                {/* End                                                */}
-                                                {/* ------------------------------------------------ */}
-
-                                                <td className="px-4 py-4">
-
-                                                    <span className="text-sm text-muted-foreground">
-
-                                                        {
-                                                            formatDateTime(
-                                                                event.endDateTime
-                                                            )
-                                                        }
-
-                                                    </span>
-
-                                                </td>
-
-
-                                                {/* ------------------------------------------------ */}
-                                                {/* Status                                             */}
-                                                {/* ------------------------------------------------ */}
-
-                                                <td className="px-4 py-4">
-
-                                                    <span
-                                                        className={`
-                                                            inline-flex
-                                                            rounded-full
-                                                            px-2.5
-                                                            py-1
-                                                            text-xs
-                                                            font-medium
-                                                            ${getStatusClass(
-                                                                event.status
-                                                            )}
-                                                        `}
-                                                    >
-
-                                                        {
-                                                            formatStatus(
-                                                                event.status
-                                                            )
-                                                        }
-
-                                                    </span>
-
-                                                </td>
-
-
-                                                {/* ------------------------------------------------ */}
-                                                {/* Actions                                            */}
-                                                {/* ------------------------------------------------ */}
-
-                                                <td className="px-4 py-4">
-
-                                                    <div className="flex justify-end gap-2">
-
-
-                                                        {/* Edit */}
-
-                                                        <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            disabled={
-                                                                isLoadingEvent
-                                                            }
-                                                            // onClick={() =>
-                                                            //     handleEditEvent(
-                                                            //         event
-                                                            //     )
-                                                            // }
-                                                        >
-
-                                                            <Pencil className="mr-2 size-4" />
-
-                                                            {isLoadingEvent
-                                                                ? "Loading..."
-                                                                : "Edit"}
-
-                                                        </Button>
-
-
-                                                        {/* Delete */}
-
-                                                        <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            className="text-destructive hover:text-destructive"
-                                                            // onClick={() =>
-                                                            //     setDeleteEventTarget(
-                                                            //         event
-                                                            //     )
-                                                            // }
-                                                        >
-
-                                                            <Trash2 className="mr-2 size-4" />
-
-                                                            Delete
-
-                                                        </Button>
-
-                                                    </div>
-
-                                                </td>
-
-                                            </tr>
-
+                            <Select
+                                value={String(
+                                    pageSize
+                                )}
+                                onValueChange={(
+                                    value
+                                ) => {
+                                    setPageSize(
+                                        Number(
+                                            value
                                         )
-                                    )}
+                                    );
 
-                                </tbody>
+                                    setPageNumber(
+                                        1
+                                    );
+                                }}
+                            >
 
-                            </table>
+                                <SelectTrigger className="w-[80px]">
+                                    <SelectValue />
+                                </SelectTrigger>
+
+                                <SelectContent>
+
+                                    <SelectItem value="10">
+                                        10
+                                    </SelectItem>
+
+                                    <SelectItem value="20">
+                                        20
+                                    </SelectItem>
+
+                                    <SelectItem value="50">
+                                        50
+                                    </SelectItem>
+
+                                    <SelectItem value="100">
+                                        100
+                                    </SelectItem>
+
+                                </SelectContent>
+
+                            </Select>
 
                         </div>
 
 
-                        {/* ---------------------------------------------------- */}
-                        {/* Pagination                                            */}
-                        {/* ---------------------------------------------------- */}
+                        {/* Pagination */}
 
-                        <div className="flex flex-col gap-3 border-t px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex items-center gap-2">
 
-
-                            {/* Left side */}
-
-                            <div className="flex items-center gap-4">
-
-                                <p className="text-sm text-muted-foreground">
-
-                                    Showing{" "}
-
-                                    <span className="font-medium text-foreground">
-
-                                        {startItem}–{endItem}
-
-                                    </span>{" "}
-
-                                    of{" "}
-
-                                    <span className="font-medium text-foreground">
-
-                                        {totalNumber}
-
-                                    </span>{" "}
-
-                                    events
-
-                                </p>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={
+                                    pageNumber ===
+                                    1
+                                }
+                                onClick={() =>
+                                    setPageNumber(
+                                        (
+                                            page
+                                        ) =>
+                                            page -
+                                            1
+                                    )
+                                }
+                            >
+                                Previous
+                            </Button>
 
 
-                                {/* Rows per page */}
+                            <span className="whitespace-nowrap text-sm text-muted-foreground">
 
-                                <div className="flex items-center gap-2">
+                                Page{" "}
 
-                                    <span className="text-sm text-muted-foreground">
+                                <span className="font-medium text-foreground">
+                                    {pageNumber}
+                                </span>{" "}
 
-                                        Rows per page
+                                of{" "}
 
-                                    </span>
+                                <span className="font-medium text-foreground">
+                                    {totalPages ||
+                                        1}
+                                </span>
 
-
-                                    <Select
-                                        value={String(
-                                            pageSize
-                                        )}
-                                        onValueChange={
-                                            handlePageSizeChange
-                                        }
-                                    >
-
-                                        <SelectTrigger className="w-[70px]">
-
-                                            <SelectValue />
-
-                                        </SelectTrigger>
+                            </span>
 
 
-                                        <SelectContent>
-
-                                            <SelectItem value="10">
-                                                10
-                                            </SelectItem>
-
-                                            <SelectItem value="20">
-                                                20
-                                            </SelectItem>
-
-                                            <SelectItem value="50">
-                                                50
-                                            </SelectItem>
-
-                                            <SelectItem value="100">
-                                                100
-                                            </SelectItem>
-
-                                        </SelectContent>
-
-                                    </Select>
-
-                                </div>
-
-                            </div>
-
-
-                            {/* Right side */}
-
-                            <div className="flex items-center gap-2">
-
-
-                                {/* Previous */}
-
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    disabled={
-                                        pageNumber === 1 ||
-                                        isFetching
-                                    }
-                                    onClick={() =>
-                                        setPageNumber(
-                                            (page) =>
-                                                page - 1
-                                        )
-                                    }
-                                >
-
-                                    <ChevronLeft className="mr-1 size-4" />
-
-                                    Previous
-
-                                </Button>
-
-
-                                {/* Page numbers */}
-
-                                <div className="flex items-center gap-1">
-
-                                    {Array.from(
-                                        {
-                                            length:
-                                                totalPages,
-                                        },
-                                        (_, index) =>
-                                            index + 1
-                                    ).map(
-                                        (page) => (
-
-                                            <Button
-                                                key={
-                                                    page
-                                                }
-                                                variant={
-                                                    pageNumber ===
-                                                    page
-                                                        ? "default"
-                                                        : "outline"
-                                                }
-                                                size="sm"
-                                                disabled={
-                                                    isFetching
-                                                }
-                                                onClick={() =>
-                                                    setPageNumber(
-                                                        page
-                                                    )
-                                                }
-                                            >
-
-                                                {page}
-
-                                            </Button>
-
-                                        )
-                                    )}
-
-                                </div>
-
-
-                                {/* Next */}
-
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    disabled={
-                                        pageNumber >=
-                                            totalPages ||
-                                        isFetching
-                                    }
-                                    onClick={() =>
-                                        setPageNumber(
-                                            (page) =>
-                                                page + 1
-                                        )
-                                    }
-                                >
-
-                                    Next
-
-                                    <ChevronRight className="ml-1 size-4" />
-
-                                </Button>
-
-                            </div>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={
+                                    totalPages ===
+                                        0 ||
+                                    pageNumber >=
+                                        totalPages
+                                }
+                                onClick={() =>
+                                    setPageNumber(
+                                        (
+                                            page
+                                        ) =>
+                                            page +
+                                            1
+                                    )
+                                }
+                            >
+                                Next
+                            </Button>
 
                         </div>
 
                     </div>
 
-                )}
+                </div>
 
-
-            {/* ---------------------------------------------------------------- */}
-            {/* Create Event Dialog                                               */}
-            {/* ---------------------------------------------------------------- */}
-
-            <Dialog
-                open={createOpen}
-                onOpenChange={setCreateOpen}
-            >
-
-                <DialogContent>
-
-                    <DialogHeader>
-
-                        <DialogTitle>
-                            Add Event
-                        </DialogTitle>
-
-                    </DialogHeader>
-
-
-                    <EventForm
-                        agencyId={agencyId}
-                        onSuccess={() => {
-
-                            setCreateOpen(
-                                false
-                            );
-
-                            setPageNumber(1);
-
-                            refreshEvents();
-
-                        }}
-                        onCancel={() =>
-                            setCreateOpen(
-                                false
-                            )
-                        }
-                    />
-
-                </DialogContent>
-
-            </Dialog>
-
-
-            {/* ---------------------------------------------------------------- */}
-            {/* Edit Event Dialog                                                 */}
-            {/* ---------------------------------------------------------------- */}
-
-            <Dialog
-                open={!!editEvent}
-                onOpenChange={(open) => {
-
-                    if (!open) {
-
-                        setEditEvent(
-                            null
-                        );
-
-                    }
-
-                }}
-            >
-
-                <DialogContent>
-
-                    <DialogHeader>
-
-                        <DialogTitle>
-                            Edit Event
-                        </DialogTitle>
-
-                    </DialogHeader>
-
-
-                    {editEvent && (
-
-                        <EventForm
-                            event={editEvent}
-                            agencyId={agencyId}
-                            onSuccess={() => {
-
-                                setEditEvent(
-                                    null
-                                );
-
-                                refreshEvents();
-
-                            }}
-                            onCancel={() =>
-                                setEditEvent(
-                                    null
-                                )
-                            }
-                        />
-
-                    )}
-
-                </DialogContent>
-
-            </Dialog>
-
-
-            {/* ---------------------------------------------------------------- */}
-            {/* Delete Event Dialog                                               */}
-            {/* ---------------------------------------------------------------- */}
-
-            {/* {deleteEventTarget && (
-
-                <DeleteEventDialog
-                    event={deleteEventTarget}
-                    open={true}
-                    onOpenChange={(open) => {
-
-                        if (!open) {
-
-                            setDeleteEventTarget(
-                                null
-                            );
-
-                        }
-
-                    }}
-                    onSuccess={() => {
-
-                        setDeleteEventTarget(
-                            null
-                        );
-
-                        refreshEvents();
-
-                    }}
-                />
-
-            )} */}
+            </div>
 
         </div>
     );
-}
-
-
-/* ========================================================================== */
-/* Helpers                                                                    */
-/* ========================================================================== */
-
-
-function formatDateTime(
-    value?: string | null
-): string {
-
-    if (!value) {
-        return "—";
-    }
-
-
-    const date =
-        new Date(value);
-
-
-    if (
-        Number.isNaN(
-            date.getTime()
-        )
-    ) {
-
-        return "—";
-
-    }
-
-
-    return new Intl.DateTimeFormat(
-        undefined,
-        {
-            dateStyle: "medium",
-            timeStyle: "short",
-        }
-    ).format(date);
-
-}
-
-
-function formatStatus(
-    status: unknown
-): string {
-
-    if (
-        typeof status !==
-        "string"
-    ) {
-
-        return "Unknown";
-
-    }
-
-
-    return status
-        .replace(
-            /([a-z])([A-Z])/g,
-            "$1 $2"
-        )
-        .replace(
-            /^./,
-            (value) =>
-                value.toUpperCase()
-        );
-
-}
-
-
-function getStatusClass(
-    status: unknown
-): string {
-
-    switch (status) {
-
-        case "Draft":
-
-            return "bg-muted text-muted-foreground";
-
-
-        case "Scheduled":
-
-            return "bg-blue-500/10 text-blue-600";
-
-
-        case "Ongoing":
-
-            return "bg-yellow-500/10 text-yellow-600";
-
-
-        case "Completed":
-
-            return "bg-green-500/10 text-green-600";
-
-
-        case "Cancelled":
-
-            return "bg-destructive/10 text-destructive";
-
-
-        default:
-
-            return "bg-muted text-muted-foreground";
-
-    }
-
 }

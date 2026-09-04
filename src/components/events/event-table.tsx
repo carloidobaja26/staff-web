@@ -30,7 +30,7 @@ import {
 
 import { EventDialog } from "./event-dialog";
 import { EventActions } from "./event-actions";
-
+import { useAgencyStore } from "@/stores/agency-store";
 
 const statusLabels: Record<EventStatus, string> = {
     [EventStatus.Draft]: "Draft",
@@ -95,7 +95,9 @@ function formatDateTime(
 export function EventTable() {
     const queryClient =
         useQueryClient();
-
+    const agencyId = useAgencyStore(
+        (state) => state.agencyId
+    );
     const [pageNumber, setPageNumber] =
         useState(1);
 
@@ -235,6 +237,15 @@ export function EventTable() {
         );
     }
 
+    if (!agencyId) {
+        return (
+            <div className="rounded-xl border bg-card p-8 text-center">
+                <p className="text-sm text-muted-foreground">
+                    Please select an agency.
+                </p>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-4">

@@ -23,12 +23,12 @@ import { EventDialog } from "./event-dialog";
 import { DeleteEventDialog } from "./delete-event-dialog";
 
 import type { Event } from "@/lib/api/events";
+import { useAgencyStore } from "@/stores/agency-store";
 
 type EventActionsProps = {
     event: Event;
     onSuccess: () => void;
 };
-
 export function EventActions({
     event,
     onSuccess,

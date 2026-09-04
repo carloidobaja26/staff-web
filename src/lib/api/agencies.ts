@@ -56,14 +56,14 @@ export async function getAgencyClientsPaginated(
 
 export type AgencyEvent = {
     id: string;
-    eventNumber: string;
     name: string;
-    description?: string;
+    eventNumber?: string | null;
+    eventType: string;
+    clientName?: string | null;
+    clientId: string;
     startDateTime: string;
     endDateTime: string;
-    status: number;
-    eventType: number;
-    isActive: boolean;
+    status: string;
 };
 
 export async function getAgencyEventsPaginated(
@@ -86,6 +86,15 @@ export async function getAgencyEventsPaginated(
     return response.data.data;
 }
 
+export async function deleteAgencyEvent(
+    eventId: string
+) {
+    const response = await apiClient.delete(
+        `/api/events/${eventId}`
+    );
+
+    return response.data.data;
+}
 export type Agency = {
     id: string;
 

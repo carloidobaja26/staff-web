@@ -16,11 +16,11 @@ import { EventForm } from "./event-form";
 import type { Event } from "@/lib/api/events";
 
 type EventDialogProps = {
-event?: Event;
-clientId?: string;
-open?: boolean;
-onOpenChange?: (open: boolean) => void;
-onSuccess: () => void;
+    event?: Event;
+    clientId?: string;
+    open?: boolean;
+    onOpenChange?: (open: boolean) => void;
+    onSuccess: () => void;
 };
 
 export function EventDialog({
@@ -75,7 +75,6 @@ return (
             </DialogHeader>
 
             <EventForm
-                agencyId={""}
                 event={event}
                 clientId={clientId}
                 onSuccess={handleSuccess}

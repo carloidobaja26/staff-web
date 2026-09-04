@@ -4,14 +4,13 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useQuery } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { useQuery } from "@tanstack/react-query";
-import { getVenuesByTenant } from "@/lib/api/venues";
-import { getAgenciesByTenant } from "@/lib/api/agencies";
+
 import {
     Select,
     SelectContent,
@@ -21,18 +20,27 @@ import {
 } from "@/components/ui/select";
 
 import {
+    getVenuesByTenant,
+} from "@/lib/api/venues";
+
+import {
+    getAgency,
+    getAgencyClientsPaginated,
+} from "@/lib/api/agencies";
+
+import {
     createEvent,
     updateEvent,
     type Event,
 } from "@/lib/api/events";
 
 import { CURRENT_TENANT_ID } from "@/constants/tenant";
+import { useAgencyStore } from "@/stores/agency-store";
 
 const eventSchema = z.object({
     eventNumber: z
         .string()
         .min(1, "Event number is required"),
-
 
     name: z
         .string()
@@ -56,23 +64,27 @@ const eventSchema = z.object({
 
     startDateTime: z
         .string()
-        .min(1, "Start date and time is required"),
+        .min(
+            1,
+            "Start date and time is required"
+        ),
 
     endDateTime: z
         .string()
-        .min(1, "End date and time is required"),
+        .min(
+            1,
+            "End date and time is required"
+        ),
 
     description: z
         .string()
         .optional(),
-
 });
 
 type EventFormValues =
     z.infer<typeof eventSchema>;
 
 type EventFormProps = {
-    agencyId: string;
     event?: Event;
 
     clientId?: string;
@@ -80,7 +92,6 @@ type EventFormProps = {
     onSuccess: () => void;
 
     onCancel: () => void;
-
 };
 
 const eventTypes = [
@@ -113,17 +124,15 @@ function toDateTimeLocal(
 
     const localDate = new Date(
         date.getTime() -
-        offset * 60 * 1000
+            offset * 60 * 1000
     );
 
     return localDate
         .toISOString()
         .slice(0, 16);
-
 }
 
 export function EventForm({
-    agencyId,
     event,
     clientId,
     onSuccess,
@@ -133,34 +142,145 @@ export function EventForm({
         useState<string | null>(null);
 
     /*
-     * Temporary relationship data.
+     * Global agency
      *
-     * Replace these with your actual
-     * Agency / Client / Venue queries.
+     * The selected agency is now controlled
+     * by Zustand.
      */
+    const agencyId = useAgencyStore(
+        (state) => state.agencyId
+    );
 
-    const [clients] = useState<
-        { id: string; name: string }[]
-    >([]);
+    /*
+     * If there is no selected agency,
+     * the form cannot be used.
+     */
+    if (!agencyId) {
+        return (
+            <div className="rounded-md border border-destructive/30 bg-destructive/5 p-4 text-center">
+                <p className="text-sm font-medium text-destructive">
+                    No agency selected.
+                </p>
 
+                <p className="mt-1 text-sm text-muted-foreground">
+                    Please select an agency before creating or editing an event.
+                </p>
+
+                <div className="mt-4">
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={onCancel}
+                    >
+                        Close
+                    </Button>
+                </div>
+            </div>
+        );
+    }
+
+    /*
+     * Client pagination / search
+     */
+    const [clientSearch, setClientSearch] =
+        useState("");
+
+    const [
+        clientPageNumber,
+        setClientPageNumber,
+    ] = useState(1);
+
+    const clientPageSize = 10;
+
+    /*
+     * Agency
+     */
+    const {
+        data: agency,
+        isLoading: agencyLoading,
+    } = useQuery({
+        queryKey: [
+            "agency",
+            agencyId,
+        ],
+
+        queryFn: () =>
+            getAgency(agencyId),
+
+        enabled: !!agencyId,
+    });
+
+    /*
+     * Venues
+     */
     const {
         data: venues = [],
         isLoading: venuesLoading,
     } = useQuery({
-        queryKey: ["venues", CURRENT_TENANT_ID],
+        queryKey: [
+            "venues",
+            CURRENT_TENANT_ID,
+        ],
+
         queryFn: () =>
-            getVenuesByTenant(CURRENT_TENANT_ID),
+            getVenuesByTenant(
+                CURRENT_TENANT_ID
+            ),
     });
 
+    /*
+     * Clients
+     *
+     * Clients are scoped to the selected
+     * agency and loaded using pagination
+     * and search.
+     */
     const {
-        data: agencies = [],
-        isLoading: agenciesLoading,
+        data: clientsData,
+        isLoading: clientsLoading,
     } = useQuery({
-        queryKey: ["agencies", CURRENT_TENANT_ID],
+        queryKey: [
+            "agency-event-clients",
+            agencyId,
+            clientPageNumber,
+            clientPageSize,
+            clientSearch,
+        ],
+
         queryFn: () =>
-            getAgenciesByTenant(),
+            getAgencyClientsPaginated(
+                agencyId,
+                {
+                    pageNumber:
+                        clientPageNumber,
+
+                    pageSize:
+                        clientPageSize,
+
+                    search:
+                        clientSearch.trim() ||
+                        undefined,
+                }
+            ),
+
+        enabled: !!agencyId,
     });
 
+    const clients =
+        clientsData?.items ?? [];
+
+    const clientTotalNumber =
+        clientsData?.totalNumber ?? 0;
+
+    const clientTotalPages =
+        Math.ceil(
+            clientTotalNumber /
+                clientPageSize
+        );
+
+    /*
+     * Form
+     */
     const {
         register,
         handleSubmit,
@@ -182,15 +302,8 @@ export function EventForm({
                 event?.name ?? "",
 
             agencyId:
-                event?.agencyId ?? "",
+                agencyId,
 
-            /*
-             * Important:
-             *
-             * When creating from the Client
-             * Details page, use the clientId
-             * supplied by the parent.
-             */
             clientId:
                 clientId ??
                 event?.clientId ??
@@ -221,9 +334,6 @@ export function EventForm({
     const selectedType =
         watch("type");
 
-    const selectedAgency =
-        watch("agencyId");
-
     const selectedClient =
         watch("clientId");
 
@@ -231,18 +341,36 @@ export function EventForm({
         watch("venueId");
 
     /*
-     * If clientId is provided by the parent
-     * and we're creating a new event,
-     * the client is already known.
+     * If the form is opened from the
+     * Client Details page, keep the
+     * client locked.
      */
     const isClientLocked =
         !event && !!clientId;
 
+    /*
+     * Submit
+     */
     const onSubmit = async (
         values: EventFormValues
     ) => {
         setSubmitError(null);
 
+        /*
+         * Make sure the global agency still
+         * exists before submitting.
+         */
+        if (!agencyId) {
+            setSubmitError(
+                "Please select an agency before saving the event."
+            );
+
+            return;
+        }
+
+        /*
+         * Validate date range.
+         */
         if (
             new Date(
                 values.endDateTime
@@ -268,41 +396,90 @@ export function EventForm({
 
         try {
             if (event) {
-                await updateEvent(event.id, {
-                    agencyId: values.agencyId,
-                    clientId: clientId ?? values.clientId,
-                    venueId: values.venueId || null,
-                    eventNumber: values.eventNumber,
-                    name: values.name,
-                    description: values.description || undefined,
-                    type: Number(values.type),
-                    startDateTime: new Date(
-                        values.startDateTime
-                    ).toISOString(),
+                await updateEvent(
+                    event.id,
+                    {
+                        agencyId:
+                            agencyId,
 
-                    endDateTime: new Date(
-                        values.endDateTime
-                    ).toISOString(),
-                    status: event.status,
-                    isActive: event.isActive,
-                });
+                        clientId:
+                            selectedClientId,
+
+                        venueId:
+                            values.venueId ||
+                            null,
+
+                        eventNumber:
+                            values.eventNumber,
+
+                        name:
+                            values.name,
+
+                        description:
+                            values.description ||
+                            undefined,
+
+                        type:
+                            Number(
+                                values.type
+                            ),
+
+                        startDateTime:
+                            new Date(
+                                values.startDateTime
+                            ).toISOString(),
+
+                        endDateTime:
+                            new Date(
+                                values.endDateTime
+                            ).toISOString(),
+
+                        status:
+                            event.status,
+
+                        isActive:
+                            event.isActive,
+                    }
+                );
             } else {
                 await createEvent({
-                    tenantId: CURRENT_TENANT_ID,
-                    agencyId: values.agencyId,
-                    clientId: clientId ?? values.clientId,
-                    venueId: values.venueId || null,
-                    eventNumber: values.eventNumber,
-                    name: values.name,
-                    description: values.description || undefined,
-                    type: Number(values.type),
-                    startDateTime: new Date(
-                        values.startDateTime
-                    ).toISOString(),
+                    tenantId:
+                        CURRENT_TENANT_ID,
 
-                    endDateTime: new Date(
-                        values.endDateTime
-                    ).toISOString(),
+                    agencyId:
+                        agencyId,
+
+                    clientId:
+                        selectedClientId,
+
+                    venueId:
+                        values.venueId ||
+                        null,
+
+                    eventNumber:
+                        values.eventNumber,
+
+                    name:
+                        values.name,
+
+                    description:
+                        values.description ||
+                        undefined,
+
+                    type:
+                        Number(
+                            values.type
+                        ),
+
+                    startDateTime:
+                        new Date(
+                            values.startDateTime
+                        ).toISOString(),
+
+                    endDateTime:
+                        new Date(
+                            values.endDateTime
+                        ).toISOString(),
                 });
             }
 
@@ -376,7 +553,8 @@ export function EventForm({
                     {errors.name && (
                         <p className="text-sm text-destructive">
                             {
-                                errors.name
+                                errors
+                                    .name
                                     .message
                             }
                         </p>
@@ -384,90 +562,228 @@ export function EventForm({
                 </div>
             </div>
 
-            {/* Agency + Client */}
-            <div
-                className={
-                    isClientLocked
-                        ? "grid gap-4 sm:grid-cols-1"
-                        : "grid gap-4 sm:grid-cols-2"
-                }
-            >
-                {/* Agency */}
-                <div className="space-y-2">
-                    <Label>Agency</Label>
+            {/* Agency */}
+            <div className="space-y-2">
+                <Label>
+                    Agency
+                </Label>
 
-                    <Select
-                        value={selectedAgency || ""}
-                        onValueChange={(value) =>
-                            setValue(
-                                "agencyId",
-                                value,
-                                {
-                                    shouldValidate: true,
-                                }
-                            )
+                <Input
+                    value={
+                        agencyLoading
+                            ? "Loading agency..."
+                            : agency?.name ??
+                              "Unknown agency"
+                    }
+                    readOnly
+                    disabled
+                />
+
+                {errors.agencyId && (
+                    <p className="text-sm text-destructive">
+                        {
+                            errors
+                                .agencyId
+                                .message
                         }
-                        disabled={agenciesLoading}
-                    >
-                        <SelectTrigger>
-                            <SelectValue
-                                placeholder={
-                                    agenciesLoading
-                                        ? "Loading agencies..."
-                                        : "Select agency"
-                                }
-                            />
-                        </SelectTrigger>
+                    </p>
+                )}
+            </div>
 
-                        <SelectContent>
-                            {agencies
-                                .filter((agency) => agency.isActive)
-                                .map((agency) => (
-                                    <SelectItem
-                                        key={agency.id}
-                                        value={agency.id}
-                                    >
-                                        {agency.name}
-                                    </SelectItem>
-                                ))}
-                        </SelectContent>
-                    </Select>
+            {/* Client */}
+{clientId ? (
+    <div className="space-y-2">
+        <Label>Client</Label>
 
-                    {errors.agencyId && (
-                        <p className="text-sm text-destructive">
-                            {errors.agencyId.message}
-                        </p>
-                    )}
-                </div>
+        <Input
+            value={
+                clients.find(
+                    (client) => client.id === clientId
+                )?.name ?? "Loading client..."
+            }
+            readOnly
+            disabled
+        />
 
+        {errors.clientId && (
+            <p className="text-sm text-destructive">
+                {errors.clientId.message}
+            </p>
+        )}
+    </div>
+) : (
+    <div className="space-y-2">
+        <Label>Client</Label>
 
-                {/* Client */}
-                <div className="space-y-2">
-                    <Label>Client</Label>
+        <Select
+            value={selectedClient}
+            onValueChange={(value) => {
+                setValue("clientId", value, {
+                    shouldValidate: true,
+                    shouldDirty: true,
+                });
+            }}
+        >
+            <SelectTrigger>
+                <SelectValue
+                    placeholder={
+                        clientsLoading
+                            ? "Loading clients..."
+                            : "Select client"
+                    }
+                />
+            </SelectTrigger>
 
+            <SelectContent>
+                {/* Search */}
+                <div
+                    className="p-2"
+                    onPointerDown={(e) =>
+                        e.stopPropagation()
+                    }
+                    onKeyDown={(e) =>
+                        e.stopPropagation()
+                    }
+                >
                     <Input
-                        value={clientId ?? event?.clientId ?? ""}
-                        disabled
+                        placeholder="Search clients..."
+                        value={clientSearch}
+                        onChange={(e) => {
+                            setClientSearch(
+                                e.target.value
+                            );
+                            setClientPageNumber(1);
+                        }}
+                        onKeyDown={(e) =>
+                            e.stopPropagation()
+                        }
+                        autoFocus
                     />
                 </div>
-            </div>
+
+                {/* Loading */}
+                {clientsLoading && (
+                    <div className="px-3 py-4 text-center text-sm text-muted-foreground">
+                        Loading clients...
+                    </div>
+                )}
+
+                {/* Clients */}
+                {!clientsLoading &&
+                    clients.map((client) => (
+                        <SelectItem
+                            key={client.id}
+                            value={client.id}
+                        >
+                            {client.name}
+                        </SelectItem>
+                    ))}
+
+                {/* Empty */}
+                {!clientsLoading &&
+                    clients.length === 0 && (
+                        <div className="px-3 py-4 text-center text-sm text-muted-foreground">
+                            No clients found.
+                        </div>
+                    )}
+
+                {/* Pagination */}
+                {!clientsLoading &&
+                    clientTotalPages > 1 && (
+                        <div
+                            className="flex items-center justify-between gap-2 border-t p-2"
+                            onPointerDown={(e) =>
+                                e.stopPropagation()
+                            }
+                            onKeyDown={(e) =>
+                                e.stopPropagation()
+                            }
+                        >
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                disabled={
+                                    clientPageNumber <= 1
+                                }
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+
+                                    setClientPageNumber(
+                                        (page) => page - 1
+                                    );
+                                }}
+                            >
+                                Previous
+                            </Button>
+
+                            <span className="whitespace-nowrap text-xs text-muted-foreground">
+                                Page {clientPageNumber} of{" "}
+                                {clientTotalPages}
+                            </span>
+
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                disabled={
+                                    clientPageNumber >=
+                                    clientTotalPages
+                                }
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+
+                                    setClientPageNumber(
+                                        (page) => page + 1
+                                    );
+                                }}
+                            >
+                                Next
+                            </Button>
+                        </div>
+                    )}
+            </SelectContent>
+        </Select>
+
+        {errors.clientId && (
+            <p className="text-sm text-destructive">
+                {errors.clientId.message}
+            </p>
+        )}
+    </div>
+)}
 
             {/* Venue */}
             <div className="space-y-2">
-                <Label>Venue</Label>
+                <Label>
+                    Venue
+                </Label>
 
                 <Select
-                    value={selectedVenue || "none"}
-                    onValueChange={(value) =>
+                    value={
+                        selectedVenue ||
+                        "none"
+                    }
+                    onValueChange={(
+                        value
+                    ) =>
                         setValue(
                             "venueId",
-                            value === "none" ? "" : value,
+                            value ===
+                                "none"
+                                ? ""
+                                : value,
                             {
-                                shouldValidate: true,
+                                shouldValidate:
+                                    true,
                             }
                         )
                     }
-                    disabled={venuesLoading}
+                    disabled={
+                        venuesLoading
+                    }
                 >
                     <SelectTrigger>
                         <SelectValue
@@ -485,19 +801,33 @@ export function EventForm({
                         </SelectItem>
 
                         {venues
-                            .filter((venue) => venue.isActive)
-                            .map((venue) => (
-                                <SelectItem
-                                    key={venue.id}
-                                    value={venue.id}
-                                >
-                                    {venue.name}
-                                </SelectItem>
-                            ))}
+                            .filter(
+                                (
+                                    venue
+                                ) =>
+                                    venue.isActive
+                            )
+                            .map(
+                                (
+                                    venue
+                                ) => (
+                                    <SelectItem
+                                        key={
+                                            venue.id
+                                        }
+                                        value={
+                                            venue.id
+                                        }
+                                    >
+                                        {
+                                            venue.name
+                                        }
+                                    </SelectItem>
+                                )
+                            )}
                     </SelectContent>
                 </Select>
             </div>
-
 
             {/* Event Type */}
             <div className="space-y-2">
@@ -529,7 +859,9 @@ export function EventForm({
 
                     <SelectContent>
                         {eventTypes.map(
-                            (type) => (
+                            (
+                                type
+                            ) => (
                                 <SelectItem
                                     key={
                                         type.value
@@ -550,7 +882,8 @@ export function EventForm({
                 {errors.type && (
                     <p className="text-sm text-destructive">
                         {
-                            errors.type
+                            errors
+                                .type
                                 .message
                         }
                     </p>
@@ -654,5 +987,4 @@ export function EventForm({
             </div>
         </form>
     );
-
 }

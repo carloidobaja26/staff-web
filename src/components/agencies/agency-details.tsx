@@ -38,7 +38,6 @@ import { AgencyWorkers } from "./agency-workers";
 import { AgencyClients } from "./agency-clients";
 import { AgencyEvents } from "./agency-events";
 
-
 export function AgencyDetails() {
 
     const params = useParams();
@@ -266,10 +265,9 @@ export function AgencyDetails() {
                         py-1
                         text-xs
                         font-medium
-                        ${
-                            agency.isActive
-                                ? "bg-green-500/10 text-green-600"
-                                : "bg-muted text-muted-foreground"
+                        ${agency.isActive
+                            ? "bg-green-500/10 text-green-600"
+                            : "bg-muted text-muted-foreground"
                         }
                     `}
                 >
@@ -387,7 +385,7 @@ export function AgencyDetails() {
                 <div className="p-6">
 
                     <AgencyWorkers
-                        agencyId={agency.id}
+                        agencyId={agencyId}
                     />
 
                 </div>
@@ -427,7 +425,7 @@ export function AgencyDetails() {
                 <div className="p-6">
 
                     <AgencyClients
-                        agencyId={agency.id}
+                        agencyId={agencyId}
                     />
 
                 </div>
@@ -466,9 +464,7 @@ export function AgencyDetails() {
 
                 <div className="p-6">
 
-                    <AgencyEvents
-                        agencyId={agency.id}
-                    />
+                    <AgencyEvents/>
 
                 </div>
 

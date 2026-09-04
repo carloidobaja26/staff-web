@@ -47,6 +47,7 @@ import {
 } from "@/constants/tenant";
 
 import { AgencyForm } from "./agency-form";
+import { useAgencyStore } from "@/stores/agency-store";
 
 
 export function AgencyTable() {
@@ -848,7 +849,9 @@ type AgencyRowProps = {
 function AgencyRow({
     agency,
 }: AgencyRowProps) {
-
+const setAgencyId = useAgencyStore(
+    (state) => state.setAgencyId
+);
     return (
 
         <tr
@@ -872,6 +875,9 @@ function AgencyRow({
                         items-center
                         gap-3
                     "
+                    onClick={() => {
+                        setAgencyId(agency.id);
+                    }}
                 >
 
                     <div
