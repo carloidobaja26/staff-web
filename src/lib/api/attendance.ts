@@ -1,4 +1,5 @@
 import { apiClient } from "@/lib/api/client";
+import { ApiResponse, PagedResponse, PaginationRequest } from "./types";
 
 export type Attendance = {
     id: string;
@@ -19,11 +20,14 @@ export type Attendance = {
     checkedOutById?: string | null;
     checkedOutByName?: string | null;
 
+    shiftName?: string | null;
+    shiftRoleName?: string | null;
+
     workerId: string;
     workerName?: string | null;
+    payrollId?: string | null;
 
     shiftRoleId: string;
-    shiftRoleName?: string | null;
 };
 
 export type CheckInAttendanceRequest = {
@@ -44,6 +48,13 @@ export type MarkAbsentAttendanceRequest = {
     remarks?: string;
 };
 
+export enum AttendanceStatus {
+    Pending = 1,
+    Present = 2,
+    Late = 3,
+    Absent = 4,
+    HalfDay = 5,
+}
 
 /**
  * Get attendance records for a shift role.
@@ -123,6 +134,23 @@ export async function markAbsentAttendance(
             "/api/attendance/absent",
             request
         );
+
+    return response.data.data;
+}
+
+export async function getWorkerAttendancePaginated(
+    workerId: string,
+    params: PaginationRequest
+): Promise<PagedResponse<Attendance>> {
+    const response = await apiClient.get<
+        ApiResponse<PagedResponse<Attendance>>
+    >(`/api/worker/${workerId}/attendance`, {
+        params: {
+            PageNumber: params.pageNumber,
+            PageSize: params.pageSize,
+            Search: params.search || undefined,
+        },
+    });
 
     return response.data.data;
 }

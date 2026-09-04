@@ -10,6 +10,7 @@ import {
 } from "@tanstack/react-query";
 
 import {
+    Eye,
     LogIn,
     LogOut,
     UserX,
@@ -44,6 +45,7 @@ import {
     markAbsentAttendance,
     getAttendanceByBooking,
     type Attendance,
+    AttendanceStatus,
 } from "@/lib/api/attendance";
 
 import { getApiErrorMessage } from "@/lib/helpers/api-error";
@@ -60,8 +62,9 @@ import { CURRENT_USER_ID } from "@/constants/tenant";
 import {
     AttendanceStatusBadge,
 } from "@/components/shifts/helpers/shift-attendance";
+import { GeneratePayrollButton } from "../payroll/generate-payroll-button";
 
-
+import { useRouter } from "next/navigation";
 type ShiftAttendanceProps = {
     shiftId: string;
 };
@@ -94,7 +97,7 @@ export function ShiftAttendance({
 }: ShiftAttendanceProps) {
 
     const queryClient = useQueryClient();
-
+    const router = useRouter();
 
     /* ---------------------------------------------------------------------- */
     /* Action State                                                            */
@@ -153,21 +156,21 @@ export function ShiftAttendance({
      * These MUST have different query keys.
      */
 
-const bookingQueries = useQueries({
-    queries: roles.map((role) => ({
-        queryKey: [
-            "shift-role-bookings-confirm",
-            role.id,
-        ],
+    const bookingQueries = useQueries({
+        queries: roles.map((role) => ({
+            queryKey: [
+                "shift-role-bookings-confirm",
+                role.id,
+            ],
 
-        queryFn: () =>
-            getBookingsByShiftRoleConfirm(
-                role.id
-            ),
+            queryFn: () =>
+                getBookingsByShiftRoleConfirm(
+                    role.id
+                ),
 
-        enabled: !!role.id,
-    })),
-});
+            enabled: !!role.id,
+        })),
+    });
 
 
     const isLoadingBookings =
@@ -756,34 +759,25 @@ const bookingQueries = useQueries({
                                     (worker) => (
 
                                         <AttendanceRow
-                                            key={
-                                                worker.booking.id
-                                            }
-
-                                            worker={
-                                                worker
-                                            }
-
+                                            key={worker.booking.id}
+                                            worker={worker}
                                             onCheckIn={() =>
-                                                openActionDialog(
-                                                    worker,
-                                                    "checkin"
-                                                )
+                                                openActionDialog(worker, "checkin")
                                             }
-
                                             onCheckOut={() =>
-                                                openActionDialog(
-                                                    worker,
-                                                    "checkout"
-                                                )
+                                                openActionDialog(worker, "checkout")
                                             }
-
                                             onMarkAbsent={() =>
-                                                openActionDialog(
-                                                    worker,
-                                                    "absent"
-                                                )
+                                                openActionDialog(worker, "absent")
                                             }
+                                            onViewPayroll={(payrollId) =>
+                                                router.push(`/payroll/${payrollId}`)
+                                            }
+                                            onPayrollGenerated={async () => {
+                                                await queryClient.invalidateQueries({
+                                                    queryKey: ["booking-attendance"],
+                                                });
+                                            }}
                                         />
 
                                     )
@@ -988,6 +982,8 @@ type AttendanceRowProps = {
     onCheckIn: () => void;
     onCheckOut: () => void;
     onMarkAbsent: () => void;
+    onViewPayroll: (payrollId: string) => void;
+    onPayrollGenerated: () => Promise<void>;
 };
 
 
@@ -996,14 +992,14 @@ function AttendanceRow({
     onCheckIn,
     onCheckOut,
     onMarkAbsent,
+    onViewPayroll,
+    onPayrollGenerated,
 }: AttendanceRowProps) {
-
     const {
         booking,
         attendance,
         role,
     } = worker;
-
 
     return (
         <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
@@ -1013,11 +1009,8 @@ function AttendanceRow({
             <div className="flex min-w-0 items-start gap-3">
 
                 <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted">
-
                     <Users className="size-4 text-muted-foreground" />
-
                 </div>
-
 
                 <div className="min-w-0">
 
@@ -1027,29 +1020,20 @@ function AttendanceRow({
                             {booking.workerName}
                         </p>
 
-
                         {attendance && (
-
                             <AttendanceStatusBadge
-                                status={
-                                    attendance.status
-                                }
+                                status={attendance.status}
                             />
-
                         )}
 
                     </div>
-
 
                     <p className="mt-1 text-sm text-muted-foreground">
                         {role.name}
                     </p>
 
-
                     {attendance?.checkInTime && (
-
                         <p className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
-
                             <LogIn className="size-3" />
 
                             Check in:{" "}
@@ -1057,16 +1041,11 @@ function AttendanceRow({
                             {formatAttendanceDateTime(
                                 attendance.checkInTime
                             )}
-
                         </p>
-
                     )}
 
-
                     {attendance?.checkOutTime && (
-
                         <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
-
                             <LogOut className="size-3" />
 
                             Check out:{" "}
@@ -1074,22 +1053,16 @@ function AttendanceRow({
                             {formatAttendanceDateTime(
                                 attendance.checkOutTime
                             )}
-
                         </p>
-
                     )}
 
-
                     {attendance?.remarks && (
-
                         <p className="mt-2 text-xs text-muted-foreground">
                             {attendance.remarks}
                         </p>
-
                     )}
 
                 </div>
-
             </div>
 
 
@@ -1098,7 +1071,6 @@ function AttendanceRow({
             <div className="flex shrink-0 flex-wrap items-center gap-2">
 
                 {canCheckIn(attendance) && (
-
                     <Button
                         size="sm"
                         onClick={onCheckIn}
@@ -1106,12 +1078,10 @@ function AttendanceRow({
                         <LogIn className="mr-2 size-4" />
                         Check In
                     </Button>
-
                 )}
 
 
                 {canCheckOut(attendance) && (
-
                     <Button
                         size="sm"
                         variant="outline"
@@ -1120,12 +1090,10 @@ function AttendanceRow({
                         <LogOut className="mr-2 size-4" />
                         Check Out
                     </Button>
-
                 )}
 
 
                 {canMarkAbsent(attendance) && (
-
                     <Button
                         size="sm"
                         variant="outline"
@@ -1134,14 +1102,42 @@ function AttendanceRow({
                         <UserX className="mr-2 size-4" />
                         Mark Absent
                     </Button>
-
                 )}
+
+
+                {/* Payroll */}
+
+                {attendance?.payrollId ? (
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                            onViewPayroll(
+                                attendance.payrollId!
+                            )
+                        }
+                    >
+                        <Eye className="mr-2 size-4" />
+                        View Payroll
+                    </Button>
+                ) : attendance?.status ===
+                    AttendanceStatus.Absent ? (
+                    <span className="text-sm text-muted-foreground">
+                        Not Eligible
+                    </span>
+                ) : attendance &&
+                    attendance.status !==
+                    AttendanceStatus.Pending ? (
+                    <GeneratePayrollButton
+                        attendanceId={attendance.id}
+                        onSuccess={onPayrollGenerated}
+                    />
+                ) : null}
 
             </div>
 
         </div>
     );
-
 }
 
 
