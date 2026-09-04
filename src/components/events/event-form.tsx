@@ -124,7 +124,7 @@ function toDateTimeLocal(
 
     const localDate = new Date(
         date.getTime() -
-            offset * 60 * 1000
+        offset * 60 * 1000
     );
 
     return localDate
@@ -275,7 +275,7 @@ export function EventForm({
     const clientTotalPages =
         Math.ceil(
             clientTotalNumber /
-                clientPageSize
+            clientPageSize
         );
 
     /*
@@ -573,7 +573,7 @@ export function EventForm({
                         agencyLoading
                             ? "Loading agency..."
                             : agency?.name ??
-                              "Unknown agency"
+                            "Unknown agency"
                     }
                     readOnly
                     disabled
@@ -591,169 +591,144 @@ export function EventForm({
             </div>
 
             {/* Client */}
-{clientId ? (
-    <div className="space-y-2">
-        <Label>Client</Label>
+            {clientId ? (
+                <div className="space-y-2">
+                    <Label>Client</Label>
 
-        <Input
-            value={
-                clients.find(
-                    (client) => client.id === clientId
-                )?.name ?? "Loading client..."
-            }
-            readOnly
-            disabled
-        />
-
-        {errors.clientId && (
-            <p className="text-sm text-destructive">
-                {errors.clientId.message}
-            </p>
-        )}
-    </div>
-) : (
-    <div className="space-y-2">
-        <Label>Client</Label>
-
-        <Select
-            value={selectedClient}
-            onValueChange={(value) => {
-                setValue("clientId", value, {
-                    shouldValidate: true,
-                    shouldDirty: true,
-                });
-            }}
-        >
-            <SelectTrigger>
-                <SelectValue
-                    placeholder={
-                        clientsLoading
-                            ? "Loading clients..."
-                            : "Select client"
-                    }
-                />
-            </SelectTrigger>
-
-            <SelectContent>
-                {/* Search */}
-                <div
-                    className="p-2"
-                    onPointerDown={(e) =>
-                        e.stopPropagation()
-                    }
-                    onKeyDown={(e) =>
-                        e.stopPropagation()
-                    }
-                >
                     <Input
-                        placeholder="Search clients..."
-                        value={clientSearch}
-                        onChange={(e) => {
-                            setClientSearch(
-                                e.target.value
-                            );
-                            setClientPageNumber(1);
-                        }}
-                        onKeyDown={(e) =>
-                            e.stopPropagation()
+                        value={
+                            clients.find(
+                                (client) => client.id === clientId
+                            )?.name ?? "Loading client..."
                         }
-                        autoFocus
+                        readOnly
+                        disabled
                     />
+
+                    {errors.clientId && (
+                        <p className="text-sm text-destructive">
+                            {errors.clientId.message}
+                        </p>
+                    )}
                 </div>
+            ) : (
+                <div className="space-y-2">
+                    <Label>Client</Label>
 
-                {/* Loading */}
-                {clientsLoading && (
-                    <div className="px-3 py-4 text-center text-sm text-muted-foreground">
-                        Loading clients...
-                    </div>
-                )}
-
-                {/* Clients */}
-                {!clientsLoading &&
-                    clients.map((client) => (
-                        <SelectItem
-                            key={client.id}
-                            value={client.id}
-                        >
-                            {client.name}
-                        </SelectItem>
-                    ))}
-
-                {/* Empty */}
-                {!clientsLoading &&
-                    clients.length === 0 && (
-                        <div className="px-3 py-4 text-center text-sm text-muted-foreground">
-                            No clients found.
-                        </div>
-                    )}
-
-                {/* Pagination */}
-                {!clientsLoading &&
-                    clientTotalPages > 1 && (
-                        <div
-                            className="flex items-center justify-between gap-2 border-t p-2"
-                            onPointerDown={(e) =>
-                                e.stopPropagation()
-                            }
-                            onKeyDown={(e) =>
-                                e.stopPropagation()
-                            }
-                        >
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                disabled={
-                                    clientPageNumber <= 1
+                    <Select
+                        value={selectedClient}
+                        onValueChange={(value) => {
+                            setValue("clientId", value, {
+                                shouldValidate: true,
+                                shouldDirty: true,
+                            });
+                        }}
+                    >
+                        <SelectTrigger>
+                            <SelectValue
+                                placeholder={
+                                    clientsLoading
+                                        ? "Loading clients..."
+                                        : "Select client"
                                 }
-                                onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-
-                                    setClientPageNumber(
-                                        (page) => page - 1
-                                    );
-                                }}
+                            />
+                        </SelectTrigger>
+                        {/* Explicitly set position to popper and add offset */}
+                        <SelectContent
+                            position="popper"
+                            sideOffset={4}
+                            className="p-0 w-[var(--radix-select-trigger-width)]"
+                        >
+                            <div
+                                className="border-b p-2"
+                                onPointerDown={(e) => e.stopPropagation()}
+                                onKeyDown={(e) => e.stopPropagation()}
                             >
-                                Previous
-                            </Button>
+                                <Input
+                                    placeholder="Search clients..."
+                                    value={clientSearch}
+                                    onChange={(e) => {
+                                        setClientSearch(e.target.value);
+                                        setClientPageNumber(1);
+                                    }}
+                                    onKeyDown={(e) => e.stopPropagation()}
+                                    autoFocus
+                                />
+                            </div>
 
-                            <span className="whitespace-nowrap text-xs text-muted-foreground">
-                                Page {clientPageNumber} of{" "}
-                                {clientTotalPages}
-                            </span>
+                            <div className="max-h-48 overflow-y-auto p-1">
+                                {clientsLoading ? (
+                                    <div className="px-3 py-4 text-center text-sm text-muted-foreground">
+                                        Loading clients...
+                                    </div>
+                                ) : clients.length === 0 ? (
+                                    <div className="px-3 py-4 text-center text-sm text-muted-foreground">
+                                        No clients found.
+                                    </div>
+                                ) : (
+                                    clients.map((client) => (
+                                        <SelectItem
+                                            key={client.id}
+                                            value={client.id}
+                                        >
+                                            {client.name}
+                                        </SelectItem>
+                                    ))
+                                )}
+                            </div>
 
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                disabled={
-                                    clientPageNumber >=
-                                    clientTotalPages
-                                }
-                                onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
+                            {!clientsLoading && clientTotalPages > 1 && (
+                                <div
+                                    className="flex items-center justify-between gap-2 border-t p-2"
+                                    onPointerDown={(e) => e.stopPropagation()}
+                                    onKeyDown={(e) => e.stopPropagation()}
+                                >
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        disabled={clientPageNumber <= 1}
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
 
-                                    setClientPageNumber(
-                                        (page) => page + 1
-                                    );
-                                }}
-                            >
-                                Next
-                            </Button>
-                        </div>
-                    )}
-            </SelectContent>
-        </Select>
+                                            setClientPageNumber(
+                                                (page) => page - 1
+                                            );
+                                        }}
+                                    >
+                                        Previous
+                                    </Button>
 
-        {errors.clientId && (
-            <p className="text-sm text-destructive">
-                {errors.clientId.message}
-            </p>
-        )}
-    </div>
-)}
+                                    <span className="text-xs text-muted-foreground">
+                                        {clientPageNumber} / {clientTotalPages}
+                                    </span>
+
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        disabled={
+                                            clientPageNumber >=
+                                            clientTotalPages
+                                        }
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+
+                                            setClientPageNumber(
+                                                (page) => page + 1
+                                            );
+                                        }}
+                                    >
+                                        Next
+                                    </Button>
+                                </div>
+                            )}
+                        </SelectContent>
+                    </Select>
+                </div>
+            )}
 
             {/* Venue */}
             <div className="space-y-2">
