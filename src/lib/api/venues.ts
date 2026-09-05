@@ -1,4 +1,5 @@
 import { apiClient } from "./client";
+import { ApiResponse } from "./types";
 
 export type Venue = {
     id: string;
@@ -33,12 +34,6 @@ export type PagedResult<T> = {
     pageSize: number;
     totalNumber: number;
     items: T[];
-};
-
-export type ApiResponse<T> = {
-    success: boolean;
-    message: string;
-    data: T;
 };
 
 

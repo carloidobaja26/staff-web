@@ -20,6 +20,7 @@ import {
     CURRENT_TENANT_ID,
 } from "@/constants/tenant";
 
+import { getApiErrorMessage } from "@/lib/helpers/api-error";
 
 const workerSchema = z.object({
     workerNumber: z
@@ -44,18 +45,15 @@ const workerSchema = z.object({
     birthDate: z.string().optional(),
 });
 
-
 type WorkerFormValues = z.infer<
     typeof workerSchema
 >;
-
 
 type WorkerFormProps = {
     worker?: Worker;
     onSuccess: () => void;
     onCancel: () => void;
 };
-
 
 export function WorkerForm({
     worker,
@@ -76,15 +74,25 @@ export function WorkerForm({
         resolver: zodResolver(workerSchema),
 
         defaultValues: {
-            workerNumber: worker?.workerNumber ?? "",
-            firstName: worker?.firstName ?? "",
-            lastName: worker?.lastName ?? "",
-            email: worker?.email ?? "",
-            phoneNumber: worker?.phoneNumber ?? "",
-            birthDate: worker?.birthDate ?? "",
+            workerNumber:
+                worker?.workerNumber ?? "",
+
+            firstName:
+                worker?.firstName ?? "",
+
+            lastName:
+                worker?.lastName ?? "",
+
+            email:
+                worker?.email ?? "",
+
+            phoneNumber:
+                worker?.phoneNumber ?? "",
+
+            birthDate:
+                worker?.birthDate ?? "",
         },
     });
-
 
     const onSubmit = async (
         values: WorkerFormValues
@@ -96,10 +104,17 @@ export function WorkerForm({
                 tenantId: CURRENT_TENANT_ID,
                 agencyId: CURRENT_AGENCY_ID,
 
-                workerNumber: values.workerNumber,
-                firstName: values.firstName,
-                lastName: values.lastName,
-                email: values.email,
+                workerNumber:
+                    values.workerNumber,
+
+                firstName:
+                    values.firstName,
+
+                lastName:
+                    values.lastName,
+
+                email:
+                    values.email,
 
                 phoneNumber:
                     values.phoneNumber || undefined,
@@ -113,13 +128,15 @@ export function WorkerForm({
                     worker.id,
                     {
                         ...request,
-                        isActive: worker.isActive,
+                        isActive:
+                            worker.isActive,
                     }
                 );
             } else {
                 await createWorker(request);
             }
 
+            setSubmitError(null);
             onSuccess();
         } catch (error) {
             console.error(
@@ -128,9 +145,12 @@ export function WorkerForm({
             );
 
             setSubmitError(
-                worker
-                    ? "Failed to update worker. Please try again."
-                    : "Failed to create worker. Please try again."
+                getApiErrorMessage(
+                    error,
+                    worker
+                        ? "Failed to update worker."
+                        : "Failed to create worker."
+                )
             );
         }
     };
@@ -140,9 +160,12 @@ export function WorkerForm({
             onSubmit={handleSubmit(onSubmit)}
             className="space-y-5"
         >
+            {/* Submit Error */}
             {submitError && (
-                <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
-                    {submitError}
+                <div className="rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2">
+                    <p className="text-sm text-destructive">
+                        {submitError}
+                    </p>
                 </div>
             )}
 
@@ -155,6 +178,7 @@ export function WorkerForm({
                 <Input
                     id="workerNumber"
                     placeholder="WRK-001"
+                    disabled={isSubmitting}
                     {...register("workerNumber")}
                 />
 
@@ -168,7 +192,6 @@ export function WorkerForm({
                 )}
             </div>
 
-
             {/* Name */}
             <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
@@ -179,6 +202,7 @@ export function WorkerForm({
                     <Input
                         id="firstName"
                         placeholder="John"
+                        disabled={isSubmitting}
                         {...register(
                             "firstName"
                         )}
@@ -202,6 +226,7 @@ export function WorkerForm({
                     <Input
                         id="lastName"
                         placeholder="Smith"
+                        disabled={isSubmitting}
                         {...register(
                             "lastName"
                         )}
@@ -218,7 +243,6 @@ export function WorkerForm({
                 </div>
             </div>
 
-
             {/* Email */}
             <div className="space-y-2">
                 <Label htmlFor="email">
@@ -229,6 +253,7 @@ export function WorkerForm({
                     id="email"
                     type="email"
                     placeholder="john@example.com"
+                    disabled={isSubmitting}
                     {...register("email")}
                 />
 
@@ -238,7 +263,6 @@ export function WorkerForm({
                     </p>
                 )}
             </div>
-
 
             {/* Phone + Birth Date */}
             <div className="grid gap-4 sm:grid-cols-2">
@@ -250,6 +274,7 @@ export function WorkerForm({
                     <Input
                         id="phoneNumber"
                         placeholder="09171234567"
+                        disabled={isSubmitting}
                         {...register(
                             "phoneNumber"
                         )}
@@ -264,13 +289,13 @@ export function WorkerForm({
                     <Input
                         id="birthDate"
                         type="date"
+                        disabled={isSubmitting}
                         {...register(
                             "birthDate"
                         )}
                     />
                 </div>
             </div>
-
 
             {/* Actions */}
             <div className="flex justify-end gap-2 border-t pt-4">

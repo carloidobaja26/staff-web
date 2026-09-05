@@ -36,6 +36,7 @@ import {
 
 import { CURRENT_TENANT_ID } from "@/constants/tenant";
 import { useAgencyStore } from "@/stores/agency-store";
+import { getApiErrorMessage } from "@/lib/helpers/api-error";
 
 const eventSchema = z.object({
     eventNumber: z
@@ -124,7 +125,7 @@ function toDateTimeLocal(
 
     const localDate = new Date(
         date.getTime() -
-        offset * 60 * 1000
+            offset * 60 * 1000
     );
 
     return localDate
@@ -144,7 +145,7 @@ export function EventForm({
     /*
      * Global agency
      *
-     * The selected agency is now controlled
+     * The selected agency is controlled
      * by Zustand.
      */
     const agencyId = useAgencyStore(
@@ -163,7 +164,8 @@ export function EventForm({
                 </p>
 
                 <p className="mt-1 text-sm text-muted-foreground">
-                    Please select an agency before creating or editing an event.
+                    Please select an agency before
+                    creating or editing an event.
                 </p>
 
                 <div className="mt-4">
@@ -275,7 +277,7 @@ export function EventForm({
     const clientTotalPages =
         Math.ceil(
             clientTotalNumber /
-            clientPageSize
+                clientPageSize
         );
 
     /*
@@ -483,17 +485,21 @@ export function EventForm({
                 });
             }
 
+            setSubmitError(null);
             onSuccess();
-        } catch (error) {
+        } catch (error: unknown) {
             console.error(
                 "Failed to save event:",
                 error
             );
 
             setSubmitError(
-                event
-                    ? "Failed to update event. Please try again."
-                    : "Failed to create event. Please try again."
+                getApiErrorMessage(
+                    error,
+                    event
+                        ? "Failed to update event."
+                        : "Failed to create event."
+                )
             );
         }
     };
@@ -506,8 +512,10 @@ export function EventForm({
             className="space-y-5"
         >
             {submitError && (
-                <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
-                    {submitError}
+                <div className="rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2">
+                    <p className="text-sm text-destructive">
+                        {submitError}
+                    </p>
                 </div>
             )}
 
@@ -521,6 +529,7 @@ export function EventForm({
                     <Input
                         id="eventNumber"
                         placeholder="EVT-001"
+                        disabled={isSubmitting}
                         {...register(
                             "eventNumber"
                         )}
@@ -545,6 +554,7 @@ export function EventForm({
                     <Input
                         id="name"
                         placeholder="Company Annual Party"
+                        disabled={isSubmitting}
                         {...register(
                             "name"
                         )}
@@ -573,7 +583,7 @@ export function EventForm({
                         agencyLoading
                             ? "Loading agency..."
                             : agency?.name ??
-                            "Unknown agency"
+                              "Unknown agency"
                     }
                     readOnly
                     disabled
@@ -598,8 +608,11 @@ export function EventForm({
                     <Input
                         value={
                             clients.find(
-                                (client) => client.id === clientId
-                            )?.name ?? "Loading client..."
+                                (client) =>
+                                    client.id ===
+                                    clientId
+                            )?.name ??
+                            "Loading client..."
                         }
                         readOnly
                         disabled
@@ -607,7 +620,11 @@ export function EventForm({
 
                     {errors.clientId && (
                         <p className="text-sm text-destructive">
-                            {errors.clientId.message}
+                            {
+                                errors
+                                    .clientId
+                                    .message
+                            }
                         </p>
                     )}
                 </div>
@@ -616,13 +633,26 @@ export function EventForm({
                     <Label>Client</Label>
 
                     <Select
-                        value={selectedClient}
-                        onValueChange={(value) => {
-                            setValue("clientId", value, {
-                                shouldValidate: true,
-                                shouldDirty: true,
-                            });
+                        value={
+                            selectedClient
+                        }
+                        onValueChange={(
+                            value
+                        ) => {
+                            setValue(
+                                "clientId",
+                                value,
+                                {
+                                    shouldValidate:
+                                        true,
+                                    shouldDirty:
+                                        true,
+                                }
+                            );
                         }}
+                        disabled={
+                            isSubmitting
+                        }
                     >
                         <SelectTrigger>
                             <SelectValue
@@ -633,26 +663,50 @@ export function EventForm({
                                 }
                             />
                         </SelectTrigger>
-                        {/* Explicitly set position to popper and add offset */}
+
                         <SelectContent
                             position="popper"
                             sideOffset={4}
-                            className="p-0 w-[var(--radix-select-trigger-width)]"
+                            className="w-[var(--radix-select-trigger-width)] p-0"
                         >
                             <div
                                 className="border-b p-2"
-                                onPointerDown={(e) => e.stopPropagation()}
-                                onKeyDown={(e) => e.stopPropagation()}
+                                onPointerDown={(
+                                    e
+                                ) =>
+                                    e.stopPropagation()
+                                }
+                                onKeyDown={(
+                                    e
+                                ) =>
+                                    e.stopPropagation()
+                                }
                             >
                                 <Input
                                     placeholder="Search clients..."
-                                    value={clientSearch}
-                                    onChange={(e) => {
-                                        setClientSearch(e.target.value);
-                                        setClientPageNumber(1);
+                                    value={
+                                        clientSearch
+                                    }
+                                    onChange={(
+                                        e
+                                    ) => {
+                                        setClientSearch(
+                                            e.target
+                                                .value
+                                        );
+                                        setClientPageNumber(
+                                            1
+                                        );
                                     }}
-                                    onKeyDown={(e) => e.stopPropagation()}
+                                    onKeyDown={(
+                                        e
+                                    ) =>
+                                        e.stopPropagation()
+                                    }
                                     autoFocus
+                                    disabled={
+                                        isSubmitting
+                                    }
                                 />
                             </div>
 
@@ -661,72 +715,126 @@ export function EventForm({
                                     <div className="px-3 py-4 text-center text-sm text-muted-foreground">
                                         Loading clients...
                                     </div>
-                                ) : clients.length === 0 ? (
+                                ) : clients.length ===
+                                  0 ? (
                                     <div className="px-3 py-4 text-center text-sm text-muted-foreground">
                                         No clients found.
                                     </div>
                                 ) : (
-                                    clients.map((client) => (
-                                        <SelectItem
-                                            key={client.id}
-                                            value={client.id}
-                                        >
-                                            {client.name}
-                                        </SelectItem>
-                                    ))
+                                    clients.map(
+                                        (
+                                            client
+                                        ) => (
+                                            <SelectItem
+                                                key={
+                                                    client.id
+                                                }
+                                                value={
+                                                    client.id
+                                                }
+                                            >
+                                                {
+                                                    client.name
+                                                }
+                                            </SelectItem>
+                                        )
+                                    )
                                 )}
                             </div>
 
-                            {!clientsLoading && clientTotalPages > 1 && (
-                                <div
-                                    className="flex items-center justify-between gap-2 border-t p-2"
-                                    onPointerDown={(e) => e.stopPropagation()}
-                                    onKeyDown={(e) => e.stopPropagation()}
-                                >
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        disabled={clientPageNumber <= 1}
-                                        onClick={(e) => {
-                                            e.preventDefault();
-                                            e.stopPropagation();
-
-                                            setClientPageNumber(
-                                                (page) => page - 1
-                                            );
-                                        }}
-                                    >
-                                        Previous
-                                    </Button>
-
-                                    <span className="text-xs text-muted-foreground">
-                                        {clientPageNumber} / {clientTotalPages}
-                                    </span>
-
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        disabled={
-                                            clientPageNumber >=
-                                            clientTotalPages
+                            {!clientsLoading &&
+                                clientTotalPages >
+                                    1 && (
+                                    <div
+                                        className="flex items-center justify-between gap-2 border-t p-2"
+                                        onPointerDown={(
+                                            e
+                                        ) =>
+                                            e.stopPropagation()
                                         }
-                                        onClick={(e) => {
-                                            e.preventDefault();
-                                            e.stopPropagation();
-
-                                            setClientPageNumber(
-                                                (page) => page + 1
-                                            );
-                                        }}
+                                        onKeyDown={(
+                                            e
+                                        ) =>
+                                            e.stopPropagation()
+                                        }
                                     >
-                                        Next
-                                    </Button>
-                                </div>
-                            )}
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            disabled={
+                                                clientPageNumber <=
+                                                    1 ||
+                                                isSubmitting
+                                            }
+                                            onClick={(
+                                                e
+                                            ) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+
+                                                setClientPageNumber(
+                                                    (
+                                                        page
+                                                    ) =>
+                                                        page -
+                                                        1
+                                                );
+                                            }}
+                                        >
+                                            Previous
+                                        </Button>
+
+                                        <span className="text-xs text-muted-foreground">
+                                            {
+                                                clientPageNumber
+                                            }{" "}
+                                            /{" "}
+                                            {
+                                                clientTotalPages
+                                            }
+                                        </span>
+
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            disabled={
+                                                clientPageNumber >=
+                                                    clientTotalPages ||
+                                                isSubmitting
+                                            }
+                                            onClick={(
+                                                e
+                                            ) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+
+                                                setClientPageNumber(
+                                                    (
+                                                        page
+                                                    ) =>
+                                                        page +
+                                                        1
+                                                );
+                                            }}
+                                        >
+                                            Next
+                                        </Button>
+                                    </div>
+                                )}
                         </SelectContent>
                     </Select>
+
+                    {errors.clientId && (
+                        <p className="text-sm text-destructive">
+                            {
+                                errors
+                                    .clientId
+                                    .message
+                            }
+                        </p>
+                    )}
                 </div>
             )}
 
@@ -757,7 +865,8 @@ export function EventForm({
                         )
                     }
                     disabled={
-                        venuesLoading
+                        venuesLoading ||
+                        isSubmitting
                     }
                 >
                     <SelectTrigger>
@@ -827,6 +936,9 @@ export function EventForm({
                             }
                         )
                     }
+                    disabled={
+                        isSubmitting
+                    }
                 >
                     <SelectTrigger>
                         <SelectValue placeholder="Select event type" />
@@ -875,6 +987,9 @@ export function EventForm({
                     <Input
                         id="startDateTime"
                         type="datetime-local"
+                        disabled={
+                            isSubmitting
+                        }
                         {...register(
                             "startDateTime"
                         )}
@@ -899,6 +1014,9 @@ export function EventForm({
                     <Input
                         id="endDateTime"
                         type="datetime-local"
+                        disabled={
+                            isSubmitting
+                        }
                         {...register(
                             "endDateTime"
                         )}
@@ -926,6 +1044,9 @@ export function EventForm({
                     id="description"
                     placeholder="Additional information about this event..."
                     rows={4}
+                    disabled={
+                        isSubmitting
+                    }
                     {...register(
                         "description"
                     )}

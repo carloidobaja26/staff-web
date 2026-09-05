@@ -26,6 +26,8 @@ import {
     type Event,
 } from "@/lib/api/events";
 
+import { getApiErrorMessage } from "@/lib/helpers/api-error";
+
 type DeleteEventDialogProps = {
     event: Event;
     open: boolean;
@@ -49,15 +51,12 @@ export function DeleteEventDialog({
         onSuccess: async () => {
             setError(null);
 
-            // Close dialog
             onOpenChange(false);
 
-            // Refresh event table/calendar
             await queryClient.invalidateQueries({
                 queryKey: ["events"],
             });
 
-            // Refresh event detail
             await queryClient.invalidateQueries({
                 queryKey: [
                     "event",
@@ -73,7 +72,10 @@ export function DeleteEventDialog({
             );
 
             setError(
-                "Failed to delete event. Please try again."
+                getApiErrorMessage(
+                    error,
+                    "Failed to delete event."
+                )
             );
         },
     });
@@ -155,5 +157,4 @@ export function DeleteEventDialog({
             </DialogContent>
         </Dialog>
     );
-
 }

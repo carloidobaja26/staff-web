@@ -5,6 +5,7 @@ import { Loader2, DollarSign } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { generatePayroll } from "@/lib/api/payroll";
+import { getApiErrorMessage } from "@/lib/helpers/api-error";
 
 type GeneratePayrollButtonProps = {
     attendanceId: string;
@@ -33,30 +34,16 @@ export function GeneratePayrollButton({
             });
 
             onSuccess?.();
-        } catch (error: any) {
-            const responseData = error?.response?.data;
-
-            if (responseData?.errors) {
-                const firstError = Object.values(responseData.errors)
-                    .flat()
-                    .find(
-                        (message): message is string =>
-                            typeof message === "string"
-                    );
-
-                setErrorMessage(
-                    firstError ??
-                    responseData.message ??
+        } 
+        catch (error: any) {
+            setErrorMessage(
+                getApiErrorMessage(
+                    error,
                     "Failed to generate payroll."
-                );
-            } else {
-                setErrorMessage(
-                    responseData?.message ??
-                    error?.message ??
-                    "Failed to generate payroll."
-                );
-            }
-        } finally {
+                )
+            );
+        }
+        finally {
             setIsGenerating(false);
         }
     };

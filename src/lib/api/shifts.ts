@@ -1,5 +1,5 @@
 import { apiClient } from "./client";
-import type { ApiResponse } from "./clients";
+import { ApiResponse } from "./types";
 
 export enum ShiftStatus {
     Open = 1,

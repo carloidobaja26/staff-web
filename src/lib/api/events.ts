@@ -1,4 +1,5 @@
 import { apiClient } from "./client";
+import { ApiResponse } from "./types";
 
 export enum EventStatus {
     Draft = 1,
@@ -53,14 +54,6 @@ export type PagedResult<T> = {
     totalNumber: number;
     items: T[];
 };
-
-
-export type ApiResponse<T> = {
-    success: boolean;
-    message: string;
-    data: T;
-};
-
 
 /*
  * Get paginated events

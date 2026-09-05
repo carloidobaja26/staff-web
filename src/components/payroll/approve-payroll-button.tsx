@@ -6,6 +6,7 @@ import { Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { approvePayroll } from "@/lib/api/payroll";
 import { CURRENT_USER_ID } from "@/constants/tenant";
+import { getApiErrorMessage } from "@/lib/helpers/api-error";
 
 type ApprovePayrollButtonProps = {
     payrollId: string;
@@ -31,32 +32,17 @@ export function ApprovePayrollButton({
             });
 
             await onSuccess?.();
-        } catch (error: any) {
-            const responseData = error?.response?.data;
-
-            if (responseData?.errors) {
-                const firstError = Object.values(
-                    responseData.errors
+        } 
+        catch (error: any) {
+            setErrorMessage(
+                getApiErrorMessage(
+                    error,
+                    "Failed to approve payroll."
                 )
-                    .flat()
-                    .find(
-                        (message): message is string =>
-                            typeof message === "string"
-                    );
-
-                setErrorMessage(
-                    firstError ??
-                        responseData.message ??
-                        "Failed to approve payroll."
-                );
-            } else {
-                setErrorMessage(
-                    responseData?.message ??
-                        error?.message ??
-                        "Failed to approve payroll."
-                );
-            }
-        } finally {
+            );
+        }
+        
+        finally {
             setIsApproving(false);
         }
     };

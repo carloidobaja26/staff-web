@@ -13,20 +13,16 @@ import {
     ChevronLeft,
     ChevronRight,
     MoreHorizontal,
+    Pencil,
     Plus,
     Search,
     Trash2,
     Users,
-    Pencil,
 } from "lucide-react";
 
-import {
-    Button,
-} from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 
-import {
-    Input,
-} from "@/components/ui/input";
+import { Input } from "@/components/ui/input";
 
 import {
     Select,
@@ -59,59 +55,53 @@ import {
     type Worker,
 } from "@/lib/api/workers";
 
-import {
-    AgencyWorkerForm,
-} from "./agency-worker-form";
+import { AgencyWorkerForm } from "./agency-worker-form";
 
+import { getApiErrorMessage } from "@/lib/helpers/api-error";
 
 type AgencyWorkersProps = {
     agencyId: string;
 };
 
-
 export function AgencyWorkers({
     agencyId,
 }: AgencyWorkersProps) {
-
-    const queryClient =
-        useQueryClient();
-
+    const queryClient = useQueryClient();
 
     const [
         pageNumber,
         setPageNumber,
     ] = useState(1);
 
-
     const [
         pageSize,
         setPageSize,
     ] = useState(10);
-
 
     const [
         search,
         setSearch,
     ] = useState("");
 
-
     const [
         createOpen,
         setCreateOpen,
     ] = useState(false);
-
 
     const [
         editingWorker,
         setEditingWorker,
     ] = useState<Worker | null>(null);
 
-
     const [
         deletingWorker,
         setDeletingWorker,
     ] = useState<Worker | null>(null);
 
+    const [
+        deleteError,
+        setDeleteError,
+    ] = useState<string | null>(null);
 
     /*
      * ----------------------------------------------------------------------
@@ -124,8 +114,8 @@ export function AgencyWorkers({
         isLoading,
         isFetching,
         isError,
+        error,
     } = useQuery({
-
         queryKey: [
             "agency-workers",
             agencyId,
@@ -147,42 +137,35 @@ export function AgencyWorkers({
             ),
 
         enabled: !!agencyId,
-
     });
-
 
     const workers =
         data?.items ?? [];
 
-
     const totalNumber =
         data?.totalNumber ?? 0;
-
 
     const totalPages =
         Math.max(
             1,
             Math.ceil(
                 totalNumber /
-                pageSize
+                    pageSize
             )
         );
-
 
     const startItem =
         totalNumber === 0
             ? 0
             : (pageNumber - 1) *
-                pageSize +
+                    pageSize +
                 1;
-
 
     const endItem =
         Math.min(
             pageNumber * pageSize,
             totalNumber
         );
-
 
     /*
      * ----------------------------------------------------------------------
@@ -193,13 +176,9 @@ export function AgencyWorkers({
     function handleSearchChange(
         value: string
     ) {
-
         setSearch(value);
-
         setPageNumber(1);
-
     }
-
 
     /*
      * ----------------------------------------------------------------------
@@ -209,18 +188,16 @@ export function AgencyWorkers({
 
     const deleteMutation =
         useMutation({
-
             mutationFn: async (
                 workerId: string
             ) => {
-
                 await deleteWorker(
                     workerId
                 );
-
             },
 
             onSuccess: async () => {
+                setDeleteError(null);
 
                 setDeletingWorker(
                     null
@@ -232,11 +209,52 @@ export function AgencyWorkers({
                         agencyId,
                     ],
                 });
-
             },
 
+            onError: (error) => {
+                console.error(
+                    "Failed to delete worker:",
+                    error
+                );
+
+                setDeleteError(
+                    getApiErrorMessage(
+                        error,
+                        "Failed to delete worker."
+                    )
+                );
+            },
         });
 
+    /*
+     * ----------------------------------------------------------------------
+     * Open Delete Dialog
+     * ----------------------------------------------------------------------
+     */
+
+    function handleOpenDelete(
+        worker: Worker
+    ) {
+        setDeleteError(null);
+        setDeletingWorker(worker);
+    }
+
+    /*
+     * ----------------------------------------------------------------------
+     * Close Delete Dialog
+     * ----------------------------------------------------------------------
+     */
+
+    function handleCloseDelete() {
+        if (
+            deleteMutation.isPending
+        ) {
+            return;
+        }
+
+        setDeleteError(null);
+        setDeletingWorker(null);
+    }
 
     /*
      * ----------------------------------------------------------------------
@@ -281,7 +299,6 @@ export function AgencyWorkers({
 
                 </div>
 
-
                 {/* Add Worker */}
 
                 <Button
@@ -289,22 +306,17 @@ export function AgencyWorkers({
                         setCreateOpen(true)
                     }
                 >
-
                     <Plus className="mr-2 size-4" />
-
                     Add Worker
-
                 </Button>
 
             </div>
-
 
             {/* ---------------------------------------------------------------- */}
             {/* Loading */}
             {/* ---------------------------------------------------------------- */}
 
             {isLoading && (
-
                 <div className="rounded-lg border p-8 text-center">
 
                     <p className="text-sm text-muted-foreground">
@@ -312,26 +324,28 @@ export function AgencyWorkers({
                     </p>
 
                 </div>
-
             )}
-
 
             {/* ---------------------------------------------------------------- */}
             {/* Error */}
             {/* ---------------------------------------------------------------- */}
 
             {isError && (
-
                 <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4">
 
                     <p className="text-sm font-medium text-destructive">
                         Failed to load workers.
                     </p>
 
+                    <p className="mt-1 text-sm text-muted-foreground">
+                        {getApiErrorMessage(
+                            error,
+                            "Failed to load workers."
+                        )}
+                    </p>
+
                 </div>
-
             )}
-
 
             {/* ---------------------------------------------------------------- */}
             {/* Empty */}
@@ -356,9 +370,7 @@ export function AgencyWorkers({
                         </p>
 
                     </div>
-
                 )}
-
 
             {/* ---------------------------------------------------------------- */}
             {/* Table */}
@@ -400,7 +412,6 @@ export function AgencyWorkers({
 
                                 </thead>
 
-
                                 <tbody>
 
                                     {workers.map(
@@ -426,60 +437,47 @@ export function AgencyWorkers({
                                                         href={`/workers/${worker.id}`}
                                                         className="font-medium hover:underline"
                                                     >
-
                                                         {
                                                             worker.firstName
                                                         }{" "}
-
                                                         {
                                                             worker.lastName
                                                         }
-
                                                     </Link>
 
-
                                                     <p className="mt-1 text-xs text-muted-foreground">
-
                                                         {
                                                             worker.workerNumber
                                                         }
-
                                                     </p>
 
                                                 </td>
-
 
                                                 {/* Email */}
 
                                                 <td className="px-4 py-4">
 
                                                     <span className="text-sm text-muted-foreground">
-
                                                         {
                                                             worker.email ||
                                                             "—"
                                                         }
-
                                                     </span>
 
                                                 </td>
-
 
                                                 {/* Phone */}
 
                                                 <td className="px-4 py-4">
 
                                                     <span className="text-sm text-muted-foreground">
-
                                                         {
                                                             worker.phoneNumber ||
                                                             "—"
                                                         }
-
                                                     </span>
 
                                                 </td>
-
 
                                                 {/* Status */}
 
@@ -501,17 +499,14 @@ export function AgencyWorkers({
                                                             }
                                                         `}
                                                     >
-
                                                         {
                                                             worker.isActive
                                                                 ? "Active"
                                                                 : "Inactive"
                                                         }
-
                                                     </span>
 
                                                 </td>
-
 
                                                 {/* Actions */}
 
@@ -522,22 +517,17 @@ export function AgencyWorkers({
                                                         <DropdownMenuTrigger
                                                             asChild
                                                         >
-
                                                             <Button
                                                                 variant="ghost"
                                                                 size="icon"
                                                             >
-
                                                                 <MoreHorizontal className="size-4" />
 
                                                                 <span className="sr-only">
                                                                     Open worker actions
                                                                 </span>
-
                                                             </Button>
-
                                                         </DropdownMenuTrigger>
-
 
                                                         <DropdownMenuContent align="end">
 
@@ -548,27 +538,20 @@ export function AgencyWorkers({
                                                                     )
                                                                 }
                                                             >
-
                                                                 <Pencil className="mr-2 size-4" />
-
                                                                 Edit
-
                                                             </DropdownMenuItem>
-
 
                                                             <DropdownMenuItem
                                                                 className="text-destructive focus:text-destructive"
                                                                 onClick={() =>
-                                                                    setDeletingWorker(
+                                                                    handleOpenDelete(
                                                                         worker
                                                                     )
                                                                 }
                                                             >
-
                                                                 <Trash2 className="mr-2 size-4" />
-
                                                                 Delete
-
                                                             </DropdownMenuItem>
 
                                                         </DropdownMenuContent>
@@ -588,7 +571,6 @@ export function AgencyWorkers({
 
                         </div>
 
-
                         {/* ---------------------------------------------------------------- */}
                         {/* Pagination */}
                         {/* ---------------------------------------------------------------- */}
@@ -604,52 +586,49 @@ export function AgencyWorkers({
                                     Showing{" "}
 
                                     <span className="font-medium text-foreground">
-
                                         {startItem}–{endItem}
-
                                     </span>{" "}
 
                                     of{" "}
 
                                     <span className="font-medium text-foreground">
-
                                         {totalNumber}
-
                                     </span>{" "}
 
                                     workers
 
                                 </p>
 
-
                                 <div className="flex items-center gap-2">
 
                                     <span className="text-sm text-muted-foreground">
-
                                         Rows per page
-
                                     </span>
 
-
                                     <Select
-                                        value={String(pageSize)}
-                                        onValueChange={(value) => {
+                                        value={String(
+                                            pageSize
+                                        )}
+                                        onValueChange={(
+                                            value
+                                        ) => {
 
                                             setPageSize(
-                                                Number(value)
+                                                Number(
+                                                    value
+                                                )
                                             );
 
-                                            setPageNumber(1);
+                                            setPageNumber(
+                                                1
+                                            );
 
                                         }}
                                     >
 
                                         <SelectTrigger className="w-[70px]">
-
                                             <SelectValue />
-
                                         </SelectTrigger>
-
 
                                         <SelectContent>
 
@@ -677,7 +656,6 @@ export function AgencyWorkers({
 
                             </div>
 
-
                             {/* Right side */}
 
                             <div className="flex items-center gap-2">
@@ -686,7 +664,8 @@ export function AgencyWorkers({
                                     variant="outline"
                                     size="sm"
                                     disabled={
-                                        pageNumber === 1 ||
+                                        pageNumber ===
+                                            1 ||
                                         isFetching
                                     }
                                     onClick={() =>
@@ -703,7 +682,6 @@ export function AgencyWorkers({
 
                                 </Button>
 
-
                                 <div className="flex items-center gap-1">
 
                                     {Array.from(
@@ -711,7 +689,10 @@ export function AgencyWorkers({
                                             length:
                                                 totalPages,
                                         },
-                                        (_, index) =>
+                                        (
+                                            _,
+                                            index
+                                        ) =>
                                             index + 1
                                     ).map(
                                         (page) => (
@@ -736,16 +717,13 @@ export function AgencyWorkers({
                                                     )
                                                 }
                                             >
-
                                                 {page}
-
                                             </Button>
 
                                         )
                                     )}
 
                                 </div>
-
 
                                 <Button
                                     variant="outline"
@@ -774,9 +752,7 @@ export function AgencyWorkers({
                         </div>
 
                     </div>
-
                 )}
-
 
             {/* ---------------------------------------------------------------- */}
             {/* Add Worker Dialog */}
@@ -798,7 +774,6 @@ export function AgencyWorkers({
                         </DialogTitle>
 
                     </DialogHeader>
-
 
                     <AgencyWorkerForm
                         agencyId={
@@ -829,7 +804,6 @@ export function AgencyWorkers({
 
             </Dialog>
 
-
             {/* ---------------------------------------------------------------- */}
             {/* Edit Worker Dialog */}
             {/* ---------------------------------------------------------------- */}
@@ -838,7 +812,9 @@ export function AgencyWorkers({
                 open={
                     !!editingWorker
                 }
-                onOpenChange={(open) => {
+                onOpenChange={(
+                    open
+                ) => {
 
                     if (!open) {
                         setEditingWorker(
@@ -859,9 +835,7 @@ export function AgencyWorkers({
 
                     </DialogHeader>
 
-
                     {editingWorker && (
-
                         <AgencyWorkerForm
                             agencyId={
                                 agencyId
@@ -889,13 +863,11 @@ export function AgencyWorkers({
                                 )
                             }
                         />
-
                     )}
 
                 </DialogContent>
 
             </Dialog>
-
 
             {/* ---------------------------------------------------------------- */}
             {/* Delete Worker Dialog */}
@@ -905,17 +877,12 @@ export function AgencyWorkers({
                 open={
                     !!deletingWorker
                 }
-                onOpenChange={(open) => {
+                onOpenChange={(
+                    open
+                ) => {
 
-                    if (
-                        !open &&
-                        !deleteMutation.isPending
-                    ) {
-
-                        setDeletingWorker(
-                            null
-                        );
-
+                    if (!open) {
+                        handleCloseDelete();
                     }
 
                 }}
@@ -930,7 +897,6 @@ export function AgencyWorkers({
                         </DialogTitle>
 
                     </DialogHeader>
-
 
                     {deletingWorker && (
 
@@ -954,26 +920,23 @@ export function AgencyWorkers({
 
                                 ?
 
+                                <br />
+
                                 This action cannot be undone.
 
                             </p>
 
-
-                            {deleteMutation.isError && (
+                            {deleteError && (
 
                                 <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3">
 
                                     <p className="text-sm text-destructive">
-
-                                        Failed to delete worker.
-                                        Please try again.
-
+                                        {deleteError}
                                     </p>
 
                                 </div>
 
                             )}
-
 
                             <div className="flex justify-end gap-2 border-t pt-4">
 
@@ -983,17 +946,12 @@ export function AgencyWorkers({
                                     disabled={
                                         deleteMutation.isPending
                                     }
-                                    onClick={() =>
-                                        setDeletingWorker(
-                                            null
-                                        )
+                                    onClick={
+                                        handleCloseDelete
                                     }
                                 >
-
                                     Cancel
-
                                 </Button>
-
 
                                 <Button
                                     type="button"
@@ -1001,11 +959,17 @@ export function AgencyWorkers({
                                     disabled={
                                         deleteMutation.isPending
                                     }
-                                    onClick={() =>
+                                    onClick={() => {
+
+                                        setDeleteError(
+                                            null
+                                        );
+
                                         deleteMutation.mutate(
                                             deletingWorker.id
-                                        )
-                                    }
+                                        );
+
+                                    }}
                                 >
 
                                     {deleteMutation.isPending

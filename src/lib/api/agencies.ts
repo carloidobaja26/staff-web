@@ -1,5 +1,6 @@
 import { apiClient } from "@/lib/api/client";
 import type {
+    ApiResponse,
     PagedResponse,
     PaginationRequest,
 } from "@/lib/api/types";
@@ -249,10 +250,3 @@ export async function getAgenciesByTenant(
 
     return response.data.data;
 }
-
-export type ApiResponse<T> = {
-  success: boolean;
-  message: string;
-  data: T;
-};
-

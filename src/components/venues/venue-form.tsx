@@ -17,7 +17,7 @@ import {
 } from "@/lib/api/venues";
 
 import { CURRENT_TENANT_ID } from "@/constants/tenant";
-
+import { getApiErrorMessage } from "@/lib/helpers/api-error";
 
 const venueSchema = z.object({
     name: z.string().min(1, "Venue name is required"),
@@ -47,10 +47,8 @@ const venueSchema = z.object({
     isActive: z.boolean(),
 });
 
-
 type VenueFormValues =
     z.infer<typeof venueSchema>;
-
 
 type VenueFormProps = {
     venue?: Venue;
@@ -58,16 +56,13 @@ type VenueFormProps = {
     onCancel: () => void;
 };
 
-
 export function VenueForm({
     venue,
     onSuccess,
     onCancel,
 }: VenueFormProps) {
-
     const [submitError, setSubmitError] =
         useState<string | null>(null);
-
 
     const {
         register,
@@ -113,15 +108,12 @@ export function VenueForm({
         },
     });
 
-
     const onSubmit = async (
         values: VenueFormValues
     ) => {
-
         setSubmitError(null);
 
         try {
-
             const latitude =
                 values.latitude?.trim()
                     ? Number(values.latitude)
@@ -132,7 +124,6 @@ export function VenueForm({
                     ? Number(values.longitude)
                     : null;
 
-
             if (
                 values.latitude?.trim() &&
                 Number.isNaN(latitude)
@@ -141,7 +132,6 @@ export function VenueForm({
                     "Latitude must be a valid number."
                 );
             }
-
 
             if (
                 values.longitude?.trim() &&
@@ -152,9 +142,7 @@ export function VenueForm({
                 );
             }
 
-
             if (venue) {
-
                 await updateVenue(
                     venue.id,
                     {
@@ -189,9 +177,7 @@ export function VenueForm({
                             values.isActive,
                     }
                 );
-
             } else {
-
                 await createVenue({
                     tenantId:
                         CURRENT_TENANT_ID,
@@ -223,47 +209,43 @@ export function VenueForm({
                     notes:
                         values.notes || undefined,
                 });
-
             }
 
-
+            setSubmitError(null);
             onSuccess();
-
         } catch (error) {
-
             console.error(
                 "Failed to save venue:",
                 error
             );
 
             setSubmitError(
-                error instanceof Error
-                    ? error.message
-                    : venue
-                        ? "Failed to update venue. Please try again."
-                        : "Failed to create venue. Please try again."
+                getApiErrorMessage(
+                    error,
+                    venue
+                        ? "Failed to update venue."
+                        : "Failed to create venue."
+                )
             );
         }
     };
-
 
     return (
         <form
             onSubmit={handleSubmit(onSubmit)}
             className="space-y-5"
         >
-
             {/* Submit Error */}
             {submitError && (
-                <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
-                    {submitError}
+                <div className="rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2">
+                    <p className="text-sm text-destructive">
+                        {submitError}
+                    </p>
                 </div>
             )}
 
-
             {/* Basic Information */}
             <div className="space-y-4">
-
                 <div>
                     <h3 className="text-sm font-semibold">
                         Basic Information
@@ -274,10 +256,8 @@ export function VenueForm({
                     </p>
                 </div>
 
-
                 {/* Name */}
                 <div className="space-y-2">
-
                     <Label htmlFor="name">
                         Venue Name *
                     </Label>
@@ -285,6 +265,7 @@ export function VenueForm({
                     <Input
                         id="name"
                         placeholder="Grand Ballroom"
+                        disabled={isSubmitting}
                         {...register("name")}
                     />
 
@@ -293,13 +274,10 @@ export function VenueForm({
                             {errors.name.message}
                         </p>
                     )}
-
                 </div>
-
 
                 {/* Address */}
                 <div className="space-y-2">
-
                     <Label htmlFor="address">
                         Address
                     </Label>
@@ -307,17 +285,14 @@ export function VenueForm({
                     <Input
                         id="address"
                         placeholder="123 Main Street"
+                        disabled={isSubmitting}
                         {...register("address")}
                     />
-
                 </div>
-
 
                 {/* City / Province */}
                 <div className="grid gap-4 sm:grid-cols-2">
-
                     <div className="space-y-2">
-
                         <Label htmlFor="city">
                             City
                         </Label>
@@ -325,14 +300,12 @@ export function VenueForm({
                         <Input
                             id="city"
                             placeholder="Makati"
+                            disabled={isSubmitting}
                             {...register("city")}
                         />
-
                     </div>
 
-
                     <div className="space-y-2">
-
                         <Label htmlFor="province">
                             Province
                         </Label>
@@ -340,17 +313,14 @@ export function VenueForm({
                         <Input
                             id="province"
                             placeholder="Metro Manila"
+                            disabled={isSubmitting}
                             {...register("province")}
                         />
-
                     </div>
-
                 </div>
-
 
                 {/* Postal Code */}
                 <div className="space-y-2">
-
                     <Label htmlFor="postalCode">
                         Postal Code
                     </Label>
@@ -358,17 +328,14 @@ export function VenueForm({
                     <Input
                         id="postalCode"
                         placeholder="1200"
+                        disabled={isSubmitting}
                         {...register("postalCode")}
                     />
-
                 </div>
-
             </div>
-
 
             {/* Contact Information */}
             <div className="space-y-4 border-t pt-5">
-
                 <div>
                     <h3 className="text-sm font-semibold">
                         Contact Information
@@ -379,12 +346,9 @@ export function VenueForm({
                     </p>
                 </div>
 
-
                 <div className="grid gap-4 sm:grid-cols-2">
-
                     {/* Contact Person */}
                     <div className="space-y-2">
-
                         <Label htmlFor="contactPerson">
                             Contact Person
                         </Label>
@@ -392,15 +356,13 @@ export function VenueForm({
                         <Input
                             id="contactPerson"
                             placeholder="John Smith"
+                            disabled={isSubmitting}
                             {...register("contactPerson")}
                         />
-
                     </div>
-
 
                     {/* Contact Number */}
                     <div className="space-y-2">
-
                         <Label htmlFor="contactNumber">
                             Contact Number
                         </Label>
@@ -408,19 +370,15 @@ export function VenueForm({
                         <Input
                             id="contactNumber"
                             placeholder="09171234567"
+                            disabled={isSubmitting}
                             {...register("contactNumber")}
                         />
-
                     </div>
-
                 </div>
-
             </div>
-
 
             {/* Location */}
             <div className="space-y-4 border-t pt-5">
-
                 <div>
                     <h3 className="text-sm font-semibold">
                         Location
@@ -431,12 +389,9 @@ export function VenueForm({
                     </p>
                 </div>
 
-
                 <div className="grid gap-4 sm:grid-cols-2">
-
                     {/* Latitude */}
                     <div className="space-y-2">
-
                         <Label htmlFor="latitude">
                             Latitude
                         </Label>
@@ -446,6 +401,7 @@ export function VenueForm({
                             type="number"
                             step="any"
                             placeholder="14.5547"
+                            disabled={isSubmitting}
                             {...register("latitude")}
                         />
 
@@ -454,13 +410,10 @@ export function VenueForm({
                                 {errors.latitude.message}
                             </p>
                         )}
-
                     </div>
-
 
                     {/* Longitude */}
                     <div className="space-y-2">
-
                         <Label htmlFor="longitude">
                             Longitude
                         </Label>
@@ -470,6 +423,7 @@ export function VenueForm({
                             type="number"
                             step="any"
                             placeholder="121.0244"
+                            disabled={isSubmitting}
                             {...register("longitude")}
                         />
 
@@ -478,17 +432,12 @@ export function VenueForm({
                                 {errors.longitude.message}
                             </p>
                         )}
-
                     </div>
-
                 </div>
-
             </div>
-
 
             {/* Notes */}
             <div className="space-y-2 border-t pt-5">
-
                 <Label htmlFor="notes">
                     Notes
                 </Label>
@@ -497,16 +446,14 @@ export function VenueForm({
                     id="notes"
                     placeholder="Additional notes about this venue..."
                     rows={4}
+                    disabled={isSubmitting}
                     {...register("notes")}
                 />
-
             </div>
-
 
             {/* Status */}
             {venue && (
                 <div className="flex items-center justify-between border-t pt-5">
-
                     <div>
                         <Label>
                             Status
@@ -518,26 +465,22 @@ export function VenueForm({
                     </div>
 
                     <label className="flex cursor-pointer items-center gap-2">
-
                         <input
                             type="checkbox"
                             className="size-4 rounded border-input"
+                            disabled={isSubmitting}
                             {...register("isActive")}
                         />
 
                         <span className="text-sm">
                             Active
                         </span>
-
                     </label>
-
                 </div>
             )}
 
-
             {/* Actions */}
             <div className="flex justify-end gap-2 border-t pt-4">
-
                 <Button
                     type="button"
                     variant="outline"
@@ -546,7 +489,6 @@ export function VenueForm({
                 >
                     Cancel
                 </Button>
-
 
                 <Button
                     type="submit"
@@ -560,9 +502,7 @@ export function VenueForm({
                             ? "Save Changes"
                             : "Add Venue"}
                 </Button>
-
             </div>
-
         </form>
     );
 }

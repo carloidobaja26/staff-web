@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 import { useForm } from "react-hook-form";
 
@@ -31,6 +31,10 @@ import {
     updateWorker,
     type Worker,
 } from "@/lib/api/workers";
+
+import {
+    getApiErrorMessage,
+} from "@/lib/helpers/api-error";
 
 
 const workerSchema = z.object({
@@ -97,6 +101,9 @@ export function AgencyWorkerForm({
     onCancel,
 }: AgencyWorkerFormProps) {
 
+    const [submitError, setSubmitError] =
+        useState<string | null>(null);
+
     const {
         register,
 
@@ -141,6 +148,8 @@ export function AgencyWorkerForm({
 
     useEffect(() => {
 
+        setSubmitError(null);
+
         reset({
 
             firstName:
@@ -176,11 +185,48 @@ export function AgencyWorkerForm({
         values: WorkerFormValues
     ) {
 
-        if (worker) {
+        setSubmitError(null);
 
-            await updateWorker(
-                worker.id,
-                {
+        try {
+
+            if (worker) {
+
+                await updateWorker(
+                    worker.id,
+                    {
+                        firstName:
+                            values.firstName,
+
+                        lastName:
+                            values.lastName,
+
+                        email:
+                            values.email,
+
+                        phoneNumber:
+                            values.phoneNumber ||
+                            undefined,
+
+                        birthDate:
+                            values.birthDate ||
+                            undefined,
+
+                        workerNumber:
+                            values.workerNumber,
+
+                        isActive:
+                            values.isActive,
+                    }
+                );
+
+            } else {
+
+                await createWorker({
+                    tenantId:
+                        CURRENT_TENANT_ID,
+
+                    agencyId,
+
                     firstName:
                         values.firstName,
 
@@ -200,44 +246,26 @@ export function AgencyWorkerForm({
 
                     workerNumber:
                         values.workerNumber,
+                });
 
-                    isActive:
-                        values.isActive,
-                }
+            }
+
+            setSubmitError(null);
+
+            onSuccess();
+
+        } catch (error: unknown) {
+
+            setSubmitError(
+                getApiErrorMessage(
+                    error,
+                    worker
+                        ? "Failed to update worker."
+                        : "Failed to create worker."
+                )
             );
 
-        } else {
-
-            await createWorker({
-                tenantId:
-                    CURRENT_TENANT_ID,
-
-                agencyId,
-
-                firstName:
-                    values.firstName,
-
-                lastName:
-                    values.lastName,
-
-                email:
-                    values.email,
-
-                phoneNumber:
-                    values.phoneNumber ||
-                    undefined,
-
-                birthDate:
-                    values.birthDate ||
-                    undefined,
-
-                workerNumber:
-                    values.workerNumber,
-            });
-
         }
-
-        onSuccess();
     }
 
 
@@ -264,6 +292,7 @@ export function AgencyWorkerForm({
                         {...register(
                             "firstName"
                         )}
+                        disabled={isSubmitting}
                     />
 
                     {errors.firstName && (
@@ -292,6 +321,7 @@ export function AgencyWorkerForm({
                         {...register(
                             "lastName"
                         )}
+                        disabled={isSubmitting}
                     />
 
                     {errors.lastName && (
@@ -323,6 +353,7 @@ export function AgencyWorkerForm({
                     {...register(
                         "email"
                     )}
+                    disabled={isSubmitting}
                 />
 
                 {errors.email && (
@@ -352,6 +383,7 @@ export function AgencyWorkerForm({
                         {...register(
                             "phoneNumber"
                         )}
+                        disabled={isSubmitting}
                     />
 
                 </div>
@@ -368,6 +400,7 @@ export function AgencyWorkerForm({
                         {...register(
                             "birthDate"
                         )}
+                        disabled={isSubmitting}
                     />
 
                 </div>
@@ -385,6 +418,7 @@ export function AgencyWorkerForm({
                     {...register(
                         "workerNumber"
                     )}
+                    disabled={isSubmitting}
                 />
 
                 {errors.workerNumber && (
@@ -412,11 +446,27 @@ export function AgencyWorkerForm({
                         {...register(
                             "isActive"
                         )}
+                        disabled={isSubmitting}
                     />
 
                     Active worker
 
                 </label>
+
+            )}
+
+
+            {/* API Error */}
+
+            {submitError && (
+
+                <div className="rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2">
+
+                    <p className="text-sm text-destructive">
+                        {submitError}
+                    </p>
+
+                </div>
 
             )}
 

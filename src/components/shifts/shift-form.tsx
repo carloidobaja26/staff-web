@@ -21,10 +21,10 @@ import {
     CURRENT_TENANT_ID,
 } from "@/constants/tenant";
 
+import { getApiErrorMessage } from "@/lib/helpers/api-error";
 
 const shiftSchema = z
     .object({
-
         name: z
             .string()
             .min(1, "Shift name is required"),
@@ -51,7 +51,6 @@ const shiftSchema = z
             .nativeEnum(ShiftStatus),
 
         isActive: z.boolean(),
-
     })
     .refine(
         (data) =>
@@ -68,10 +67,8 @@ const shiftSchema = z
         }
     );
 
-
 type ShiftFormValues =
     z.infer<typeof shiftSchema>;
-
 
 type ShiftFormProps = {
     shift?: Shift;
@@ -80,11 +77,9 @@ type ShiftFormProps = {
     onCancel: () => void;
 };
 
-
 function formatDateTimeLocal(
     value?: string | null
 ): string {
-
     if (!value) {
         return "";
     }
@@ -125,17 +120,14 @@ function formatDateTimeLocal(
     return `${year}-${month}-${day}T${hours}:${minutes}`;
 }
 
-
 export function ShiftForm({
     shift,
     eventId,
     onSuccess,
     onCancel,
 }: ShiftFormProps) {
-
     const [submitError, setSubmitError] =
         useState<string | null>(null);
-
 
     const {
         register,
@@ -146,14 +138,12 @@ export function ShiftForm({
         },
         reset,
     } = useForm<ShiftFormValues>({
-
         resolver:
             zodResolver(
                 shiftSchema
             ),
 
         defaultValues: {
-
             name:
                 shift?.name ?? "",
 
@@ -177,16 +167,13 @@ export function ShiftForm({
             isActive:
                 shift?.isActive ??
                 true,
-
         },
-
     });
 
-
     useEffect(() => {
+        setSubmitError(null);
 
         reset({
-
             name:
                 shift?.name ?? "",
 
@@ -210,24 +197,18 @@ export function ShiftForm({
             isActive:
                 shift?.isActive ??
                 true,
-
         });
-
     }, [
         shift,
         reset,
     ]);
 
-
     const onSubmit = async (
         values: ShiftFormValues
     ) => {
-
         setSubmitError(null);
 
-
         if (!eventId) {
-
             setSubmitError(
                 "Unable to create shift because the event could not be identified."
             );
@@ -235,11 +216,8 @@ export function ShiftForm({
             return;
         }
 
-
         try {
-
             if (shift) {
-
                 await updateShift(
                     shift.id,
                     {
@@ -267,11 +245,8 @@ export function ShiftForm({
                             values.isActive,
                     }
                 );
-
             } else {
-
                 await createShift({
-
                     tenantId:
                         CURRENT_TENANT_ID,
 
@@ -300,34 +275,29 @@ export function ShiftForm({
                         new Date(
                             values.endDateTime
                         ).toISOString(),
-
                 });
-
             }
 
-
+            setSubmitError(null);
             onSuccess();
-
-        } catch (error) {
-
+        } catch (error: unknown) {
             console.error(
                 "Failed to save shift:",
                 error
             );
 
             setSubmitError(
-                shift
-                    ? "Failed to update shift. Please try again."
-                    : "Failed to create shift. Please try again."
+                getApiErrorMessage(
+                    error,
+                    shift
+                        ? "Failed to update shift."
+                        : "Failed to create shift."
+                )
             );
-
         }
-
     };
 
-
     return (
-
         <form
             onSubmit={
                 handleSubmit(
@@ -336,24 +306,19 @@ export function ShiftForm({
             }
             className="space-y-5"
         >
-
             {/* Error */}
 
             {submitError && (
-
-                <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
-
-                    {submitError}
-
+                <div className="rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2">
+                    <p className="text-sm text-destructive">
+                        {submitError}
+                    </p>
                 </div>
-
             )}
-
 
             {/* Shift Name */}
 
             <div className="space-y-2">
-
                 <Label htmlFor="name">
                     Shift Name *
                 </Label>
@@ -361,30 +326,24 @@ export function ShiftForm({
                 <Input
                     id="name"
                     placeholder="Morning Shift"
+                    disabled={isSubmitting}
                     {...register("name")}
                 />
 
                 {errors.name && (
-
                     <p className="text-sm text-destructive">
-
                         {
                             errors
                                 .name
                                 .message
                         }
-
                     </p>
-
                 )}
-
             </div>
-
 
             {/* Description */}
 
             <div className="space-y-2">
-
                 <Label htmlFor="description">
                     Description
                 </Label>
@@ -393,34 +352,27 @@ export function ShiftForm({
                     id="description"
                     placeholder="Shift description..."
                     rows={3}
+                    disabled={isSubmitting}
                     {...register(
                         "description"
                     )}
                 />
 
                 {errors.description && (
-
                     <p className="text-sm text-destructive">
-
                         {
                             errors
                                 .description
                                 .message
                         }
-
                     </p>
-
                 )}
-
             </div>
-
 
             {/* Date / Time */}
 
             <div className="grid gap-4 sm:grid-cols-2">
-
                 <div className="space-y-2">
-
                     <Label htmlFor="startDateTime">
                         Start Date & Time *
                     </Label>
@@ -428,30 +380,24 @@ export function ShiftForm({
                     <Input
                         id="startDateTime"
                         type="datetime-local"
+                        disabled={isSubmitting}
                         {...register(
                             "startDateTime"
                         )}
                     />
 
                     {errors.startDateTime && (
-
                         <p className="text-sm text-destructive">
-
                             {
                                 errors
                                     .startDateTime
                                     .message
                             }
-
                         </p>
-
                     )}
-
                 </div>
 
-
                 <div className="space-y-2">
-
                     <Label htmlFor="endDateTime">
                         End Date & Time *
                     </Label>
@@ -459,40 +405,31 @@ export function ShiftForm({
                     <Input
                         id="endDateTime"
                         type="datetime-local"
+                        disabled={isSubmitting}
                         {...register(
                             "endDateTime"
                         )}
                     />
 
                     {errors.endDateTime && (
-
                         <p className="text-sm text-destructive">
-
                             {
                                 errors
                                     .endDateTime
                                     .message
                             }
-
                         </p>
-
                     )}
-
                 </div>
-
             </div>
-
 
             {/* Edit-only settings */}
 
             {shift && (
-
                 <div className="grid gap-4 sm:grid-cols-2">
-
                     {/* Status */}
 
                     <div className="space-y-2">
-
                         <Label htmlFor="status">
                             Status
                         </Label>
@@ -506,9 +443,11 @@ export function ShiftForm({
                                         true,
                                 }
                             )}
+                            disabled={
+                                isSubmitting
+                            }
                             className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         >
-
                             <option
                                 value={
                                     ShiftStatus.Open
@@ -548,30 +487,22 @@ export function ShiftForm({
                             >
                                 Cancelled
                             </option>
-
                         </select>
 
                         {errors.status && (
-
                             <p className="text-sm text-destructive">
-
                                 {
                                     errors
                                         .status
                                         .message
                                 }
-
                             </p>
-
                         )}
-
                     </div>
-
 
                     {/* Active */}
 
                     <div className="space-y-2">
-
                         <Label htmlFor="isActive">
                             Active
                         </Label>
@@ -589,9 +520,11 @@ export function ShiftForm({
                                             "true",
                                 }
                             )}
+                            disabled={
+                                isSubmitting
+                            }
                             className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         >
-
                             <option value="true">
                                 Active
                             </option>
@@ -599,20 +532,14 @@ export function ShiftForm({
                             <option value="false">
                                 Inactive
                             </option>
-
                         </select>
-
                     </div>
-
                 </div>
-
             )}
-
 
             {/* Actions */}
 
             <div className="flex justify-end gap-2 border-t pt-4">
-
                 <Button
                     type="button"
                     variant="outline"
@@ -633,7 +560,6 @@ export function ShiftForm({
                         !eventId
                     }
                 >
-
                     {isSubmitting
                         ? shift
                             ? "Saving..."
@@ -641,12 +567,8 @@ export function ShiftForm({
                         : shift
                             ? "Save Changes"
                             : "Add Shift"}
-
                 </Button>
-
             </div>
-
         </form>
-
     );
 }

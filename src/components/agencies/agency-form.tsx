@@ -1,13 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
-import {
-    useForm,
-} from "react-hook-form";
-
-import {
-    useMutation,
-} from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { useMutation } from "@tanstack/react-query";
 
 import {
     createAgency,
@@ -22,6 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { getApiErrorMessage } from "@/lib/helpers/api-error";
 
 type AgencyFormValues = {
     name: string;
@@ -47,13 +43,15 @@ export function AgencyForm({
 
     const isEditing = !!agency;
 
+    const [submitError, setSubmitError] =
+        useState<string | null>(null);
+
     const {
         register,
         handleSubmit,
         reset,
         formState: {
             errors,
-            isSubmitting,
         },
     } = useForm<AgencyFormValues>({
         defaultValues: {
@@ -73,6 +71,8 @@ export function AgencyForm({
     /* ---------------------------------------------------------------------- */
 
     useEffect(() => {
+
+        setSubmitError(null);
 
         if (!agency) {
             reset({
@@ -132,9 +132,18 @@ export function AgencyForm({
             }),
 
         onSuccess: () => {
+            setSubmitError(null);
             onSuccess();
         },
 
+        onError: (error: unknown) => {
+            setSubmitError(
+                getApiErrorMessage(
+                    error,
+                    "Failed to create agency."
+                )
+            );
+        },
     });
 
 
@@ -180,9 +189,18 @@ export function AgencyForm({
         },
 
         onSuccess: () => {
+            setSubmitError(null);
             onSuccess();
         },
 
+        onError: (error: unknown) => {
+            setSubmitError(
+                getApiErrorMessage(
+                    error,
+                    "Failed to update agency."
+                )
+            );
+        },
     });
 
 
@@ -194,10 +212,10 @@ export function AgencyForm({
         values: AgencyFormValues
     ) => {
 
+        setSubmitError(null);
+
         if (isEditing) {
-
             updateMutation.mutate(values);
-
             return;
         }
 
@@ -234,6 +252,7 @@ export function AgencyForm({
                             "Agency name is required.",
                     })}
                     placeholder="Agency name"
+                    disabled={isPending}
                 />
 
                 {errors.name && (
@@ -260,6 +279,7 @@ export function AgencyForm({
                     id="description"
                     {...register("description")}
                     placeholder="Agency description"
+                    disabled={isPending}
                 />
 
             </div>
@@ -281,6 +301,7 @@ export function AgencyForm({
                     type="email"
                     {...register("email")}
                     placeholder="agency@example.com"
+                    disabled={isPending}
                 />
 
             </div>
@@ -301,6 +322,7 @@ export function AgencyForm({
                     id="phoneNumber"
                     {...register("phoneNumber")}
                     placeholder="Phone number"
+                    disabled={isPending}
                 />
 
             </div>
@@ -321,6 +343,7 @@ export function AgencyForm({
                     id="address"
                     {...register("address")}
                     placeholder="Agency address"
+                    disabled={isPending}
                 />
 
             </div>
@@ -336,6 +359,7 @@ export function AgencyForm({
                         id="isActive"
                         type="checkbox"
                         {...register("isActive")}
+                        disabled={isPending}
                     />
 
                     <label
@@ -347,6 +371,17 @@ export function AgencyForm({
 
                 </div>
 
+            )}
+
+
+            {/* API Error */}
+
+            {submitError && (
+                <div className="rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2">
+                    <p className="text-sm text-destructive">
+                        {submitError}
+                    </p>
+                </div>
             )}
 
 

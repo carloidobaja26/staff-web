@@ -26,6 +26,8 @@ import {
     type Worker,
 } from "@/lib/api/workers";
 
+import { getApiErrorMessage } from "@/lib/helpers/api-error";
+
 type DeleteWorkerDialogProps = {
     worker: Worker;
     open: boolean;
@@ -60,9 +62,17 @@ export function DeleteWorkerDialog({
             });
         },
 
-        onError: () => {
+        onError: (error) => {
+            console.error(
+                "Failed to delete worker:",
+                error
+            );
+
             setError(
-                "Failed to delete worker. Please try again."
+                getApiErrorMessage(
+                    error,
+                    "Failed to delete worker."
+                )
             );
         },
     });
@@ -134,7 +144,7 @@ export function DeleteWorkerDialog({
                             <>
                                 <Trash2 className="mr-2 size-4" />
                                 Delete Worker
-                            </>
+                        </>
                         )}
                     </Button>
                 </DialogFooter>
@@ -142,4 +152,3 @@ export function DeleteWorkerDialog({
         </Dialog>
     );
 }
-

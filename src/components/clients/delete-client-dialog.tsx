@@ -1,8 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Trash2 } from "lucide-react";
+import {
+    useMutation,
+    useQueryClient,
+} from "@tanstack/react-query";
+import {
+    Loader2,
+    Trash2,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -14,7 +20,12 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 
-import { deleteClient, type Client } from "@/lib/api/clients";
+import {
+    deleteClient,
+    type Client,
+} from "@/lib/api/clients";
+
+import { getApiErrorMessage } from "@/lib/helpers/api-error";
 
 type DeleteClientDialogProps = {
     client: Client;
@@ -29,31 +40,41 @@ export function DeleteClientDialog({
 }: DeleteClientDialogProps) {
     const queryClient = useQueryClient();
 
-    const [error, setError] = useState<string | null>(null);
+    const [error, setError] =
+        useState<string | null>(null);
 
     const deleteMutation = useMutation({
-        mutationFn: () => deleteClient(client.id),
+        mutationFn: () =>
+            deleteClient(client.id),
 
         onSuccess: async () => {
             setError(null);
 
-            // Close dialog
             onOpenChange(false);
 
-            // Refresh clients table
             await queryClient.invalidateQueries({
                 queryKey: ["clients"],
             });
 
-            // Remove / refresh client detail cache
             await queryClient.invalidateQueries({
-                queryKey: ["client", client.id],
+                queryKey: [
+                    "client",
+                    client.id,
+                ],
             });
         },
 
-        onError: () => {
+        onError: (error) => {
+            console.error(
+                "Failed to delete client:",
+                error
+            );
+
             setError(
-                "Failed to delete client. Please try again."
+                getApiErrorMessage(
+                    error,
+                    "Failed to delete client."
+                )
             );
         },
     });
@@ -97,8 +118,12 @@ export function DeleteClientDialog({
                     <Button
                         type="button"
                         variant="outline"
-                        disabled={deleteMutation.isPending}
-                        onClick={() => onOpenChange(false)}
+                        disabled={
+                            deleteMutation.isPending
+                        }
+                        onClick={() =>
+                            onOpenChange(false)
+                        }
                     >
                         Cancel
                     </Button>
@@ -106,7 +131,9 @@ export function DeleteClientDialog({
                     <Button
                         type="button"
                         variant="destructive"
-                        disabled={deleteMutation.isPending}
+                        disabled={
+                            deleteMutation.isPending
+                        }
                         onClick={handleDelete}
                     >
                         {deleteMutation.isPending ? (

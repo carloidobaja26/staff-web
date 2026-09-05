@@ -17,11 +17,14 @@ import {
     Users,
 } from "lucide-react";
 
+import { useRouter } from "next/navigation";
+
 import { Button } from "@/components/ui/button";
 
 import {
     Dialog,
     DialogContent,
+    DialogDescription,
     DialogFooter,
     DialogHeader,
     DialogTitle,
@@ -62,13 +65,12 @@ import { CURRENT_USER_ID } from "@/constants/tenant";
 import {
     AttendanceStatusBadge,
 } from "@/components/shifts/helpers/shift-attendance";
+
 import { GeneratePayrollButton } from "../payroll/generate-payroll-button";
 
-import { useRouter } from "next/navigation";
 type ShiftAttendanceProps = {
     shiftId: string;
 };
-
 
 /* -------------------------------------------------------------------------- */
 /* Types                                                                      */
@@ -80,13 +82,11 @@ type AttendanceAction =
     | "absent"
     | null;
 
-
 type SelectedWorker = {
     booking: Booking;
     attendance: Attendance | null;
     role: ShiftRole;
 };
-
 
 /* -------------------------------------------------------------------------- */
 /* Component                                                                  */
@@ -95,7 +95,6 @@ type SelectedWorker = {
 export function ShiftAttendance({
     shiftId,
 }: ShiftAttendanceProps) {
-
     const queryClient = useQueryClient();
     const router = useRouter();
 
@@ -109,12 +108,10 @@ export function ShiftAttendance({
     const [selectedWorker, setSelectedWorker] =
         useState<SelectedWorker | null>(null);
 
-    const [remarks, setRemarks] =
-        useState("");
+    const [remarks, setRemarks] = useState("");
 
     const [actionError, setActionError] =
         useState<string | null>(null);
-
 
     /* ---------------------------------------------------------------------- */
     /* Shift Roles                                                             */
@@ -137,24 +134,9 @@ export function ShiftAttendance({
         enabled: !!shiftId,
     });
 
-
     /* ---------------------------------------------------------------------- */
-    /* Confirmed Bookings - ATTENDANCE ONLY                                   */
+    /* Confirmed Bookings                                                      */
     /* ---------------------------------------------------------------------- */
-
-    /*
-     * IMPORTANT:
-     *
-     * Manage Workers uses:
-     *
-     * getBookingsByShiftRole()
-     *
-     * Attendance uses:
-     *
-     * getBookingsByShiftRoleConfirm()
-     *
-     * These MUST have different query keys.
-     */
 
     const bookingQueries = useQueries({
         queries: roles.map((role) => ({
@@ -172,80 +154,51 @@ export function ShiftAttendance({
         })),
     });
 
-
     const isLoadingBookings =
         bookingQueries.some(
-            (query) =>
-                query.isLoading
+            (query) => query.isLoading
         );
-
 
     const bookingError =
         bookingQueries.find(
-            (query) =>
-                query.isError
+            (query) => query.isError
         )?.error;
-
 
     /* ---------------------------------------------------------------------- */
     /* Flatten Confirmed Bookings                                              */
     /* ---------------------------------------------------------------------- */
 
     const workers = useMemo(() => {
-
         const result: SelectedWorker[] = [];
-
 
         roles.forEach(
             (role, roleIndex) => {
-
-                /*
-                 * This data comes ONLY from:
-                 *
-                 * getBookingsByShiftRoleConfirm()
-                 */
                 const bookings =
                     bookingQueries[
                         roleIndex
                     ]?.data ?? [];
 
-
                 bookings.forEach(
                     (booking) => {
-
                         result.push({
                             booking,
                             attendance: null,
                             role,
                         });
-
                     }
                 );
-
             }
         );
 
-
         return result;
-
     }, [
         roles,
         bookingQueries,
     ]);
 
-
     /* ---------------------------------------------------------------------- */
     /* Attendance Records                                                      */
     /* ---------------------------------------------------------------------- */
-
-    /*
-     * A confirmed worker may not have an attendance record yet.
-     *
-     * Therefore:
-     *
-     * 200 -> Attendance
-     * 404 -> null
-     */
 
     const attendanceQueries = useQueries({
         queries: workers.map((worker) => ({
@@ -255,26 +208,19 @@ export function ShiftAttendance({
             ],
 
             queryFn: async () => {
-
                 try {
-
                     return await getAttendanceByBooking(
                         worker.booking.id
                     );
-
                 } catch (error) {
-
                     if (
-                        isNotFoundError(
-                            error
-                        )
+                        isNotFoundError(error)
                     ) {
                         return null;
                     }
 
                     throw error;
                 }
-
             },
 
             enabled:
@@ -282,20 +228,15 @@ export function ShiftAttendance({
         })),
     });
 
-
     const isLoadingAttendance =
         attendanceQueries.some(
-            (query) =>
-                query.isLoading
+            (query) => query.isLoading
         );
-
 
     const attendanceError =
         attendanceQueries.find(
-            (query) =>
-                query.isError
+            (query) => query.isError
         )?.error;
-
 
     /* ---------------------------------------------------------------------- */
     /* Combine Booking + Attendance                                           */
@@ -303,49 +244,35 @@ export function ShiftAttendance({
 
     const attendanceWorkers =
         useMemo(() => {
-
             return workers.map(
                 (worker, index) => {
-
                     const attendance =
                         attendanceQueries[
                             index
                         ]?.data ?? null;
 
-
                     return {
                         ...worker,
                         attendance,
                     };
-
                 }
             );
-
         }, [
             workers,
             attendanceQueries,
         ]);
-
 
     /* ---------------------------------------------------------------------- */
     /* Refresh Attendance                                                     */
     /* ---------------------------------------------------------------------- */
 
     async function invalidateAttendance() {
-
-        /*
-         * Refresh attendance records.
-         */
         await queryClient.invalidateQueries({
             queryKey: [
                 "booking-attendance",
             ],
         });
 
-
-        /*
-         * Refresh this shift's attendance.
-         */
         await queryClient.invalidateQueries({
             queryKey: [
                 "shift-attendance",
@@ -353,178 +280,135 @@ export function ShiftAttendance({
             ],
         });
 
-
-        /*
-         * Refresh ONLY the confirmed booking queries.
-         *
-         * This is separate from the Manage Workers query:
-         *
-         * ["shift-role-bookings", role.id]
-         */
         await queryClient.invalidateQueries({
             queryKey: [
                 "shift-role-confirmed-bookings",
             ],
         });
-
     }
-
 
     /* ---------------------------------------------------------------------- */
     /* Check In                                                               */
     /* ---------------------------------------------------------------------- */
 
-    const checkInMutation =
-        useMutation({
-
-            mutationFn: async () => {
-
-                if (!selectedWorker) {
-                    throw new Error(
-                        "No worker selected."
-                    );
-                }
-
-
-                return checkInAttendance({
-                    bookingId:
-                        selectedWorker.booking.id,
-
-                    checkedInById:
-                        CURRENT_USER_ID,
-
-                    remarks:
-                        remarks.trim() ||
-                        undefined,
-                });
-
-            },
-
-            onSuccess: async () => {
-
-                await invalidateAttendance();
-
-                closeActionDialog();
-
-            },
-
-            onError: (error) => {
-
-                setActionError(
-                    getApiErrorMessage(
-                        error,
-                        "Failed to check in worker."
-                    )
+    const checkInMutation = useMutation({
+        mutationFn: async () => {
+            if (!selectedWorker) {
+                throw new Error(
+                    "No worker selected."
                 );
+            }
 
-            },
+            return checkInAttendance({
+                bookingId:
+                    selectedWorker.booking.id,
 
-        });
+                checkedInById:
+                    CURRENT_USER_ID,
 
+                remarks:
+                    remarks.trim() ||
+                    undefined,
+            });
+        },
+
+        onSuccess: async () => {
+            await invalidateAttendance();
+
+            closeActionDialog();
+        },
+
+        onError: (error) => {
+            setActionError(
+                getApiErrorMessage(
+                    error,
+                    "Failed to check in worker."
+                )
+            );
+        },
+    });
 
     /* ---------------------------------------------------------------------- */
     /* Check Out                                                              */
     /* ---------------------------------------------------------------------- */
 
-    const checkOutMutation =
-        useMutation({
-
-            mutationFn: async () => {
-
-                if (!selectedWorker) {
-                    throw new Error(
-                        "No worker selected."
-                    );
-                }
-
-
-                return checkOutAttendance({
-                    bookingId:
-                        selectedWorker.booking.id,
-
-                    checkedOutById:
-                        CURRENT_USER_ID,
-
-                    remarks:
-                        remarks.trim() ||
-                        undefined,
-                });
-
-            },
-
-            onSuccess: async () => {
-
-                await invalidateAttendance();
-
-                closeActionDialog();
-
-            },
-
-            onError: (error) => {
-
-                setActionError(
-                    getApiErrorMessage(
-                        error,
-                        "Failed to check out worker."
-                    )
+    const checkOutMutation = useMutation({
+        mutationFn: async () => {
+            if (!selectedWorker) {
+                throw new Error(
+                    "No worker selected."
                 );
+            }
 
-            },
+            return checkOutAttendance({
+                bookingId:
+                    selectedWorker.booking.id,
 
-        });
+                checkedOutById:
+                    CURRENT_USER_ID,
 
+                remarks:
+                    remarks.trim() ||
+                    undefined,
+            });
+        },
+
+        onSuccess: async () => {
+            await invalidateAttendance();
+
+            closeActionDialog();
+        },
+
+        onError: (error) => {
+            setActionError(
+                getApiErrorMessage(
+                    error,
+                    "Failed to check out worker."
+                )
+            );
+        },
+    });
 
     /* ---------------------------------------------------------------------- */
-    /* Mark Absent                                                             */
+    /* Mark Absent                                                            */
     /* ---------------------------------------------------------------------- */
 
-    const absentMutation =
-        useMutation({
-
-            mutationFn: async () => {
-
-                if (!selectedWorker) {
-                    throw new Error(
-                        "No worker selected."
-                    );
-                }
-
-
-                return markAbsentAttendance({
-                    bookingId:
-                        selectedWorker.booking.id,
-
-                    markedAbsentById:
-                        CURRENT_USER_ID,
-
-                    remarks:
-                        remarks.trim() ||
-                        undefined,
-                });
-
-            },
-
-            onSuccess: async () => {
-
-                await invalidateAttendance();
-
-                closeActionDialog();
-
-            },
-
-            onError: (error) => {
-
-                setActionError(
-                    getApiErrorMessage(
-                        error,
-                        "Failed to mark worker absent."
-                    )
+    const absentMutation = useMutation({
+        mutationFn: async () => {
+            if (!selectedWorker) {
+                throw new Error(
+                    "No worker selected."
                 );
+            }
 
-            },
+            return markAbsentAttendance({
+                bookingId:
+                    selectedWorker.booking.id,
 
-        });
+                markedAbsentById:
+                    CURRENT_USER_ID,
 
+                remarks:
+                    remarks.trim() ||
+                    undefined,
+            });
+        },
+
+        onSuccess: async () => {
+            await invalidateAttendance();
+
+            closeActionDialog();
+        },
+
+        onError: (error) => {
+            setActionError(
+                getApiErrorMessage(
+                    error,
+                    "Failed to mark worker absent."
+                )
+            );
+        },
+    });
 
     /* ---------------------------------------------------------------------- */
     /* Dialog                                                                  */
@@ -534,7 +418,6 @@ export function ShiftAttendance({
         worker: SelectedWorker,
         selectedAction: AttendanceAction
     ) {
-
         setSelectedWorker(worker);
 
         setAction(selectedAction);
@@ -542,12 +425,9 @@ export function ShiftAttendance({
         setRemarks("");
 
         setActionError(null);
-
     }
 
-
     function closeActionDialog() {
-
         if (
             checkInMutation.isPending ||
             checkOutMutation.isPending ||
@@ -556,7 +436,6 @@ export function ShiftAttendance({
             return;
         }
 
-
         setAction(null);
 
         setSelectedWorker(null);
@@ -564,17 +443,12 @@ export function ShiftAttendance({
         setRemarks("");
 
         setActionError(null);
-
     }
 
-
     function handleConfirmAction() {
-
         setActionError(null);
 
-
         switch (action) {
-
             case "checkin":
                 checkInMutation.mutate();
                 break;
@@ -589,81 +463,64 @@ export function ShiftAttendance({
 
             default:
                 break;
-
         }
-
     }
-
 
     const isSubmitting =
         checkInMutation.isPending ||
         checkOutMutation.isPending ||
         absentMutation.isPending;
 
-
     const isLoading =
         isLoadingRoles ||
         isLoadingBookings ||
         isLoadingAttendance;
-
 
     /* ---------------------------------------------------------------------- */
     /* Errors                                                                  */
     /* ---------------------------------------------------------------------- */
 
     if (isRolesError) {
-
         return (
             <AttendanceContainer>
-
                 <ErrorMessage
+                    title="Failed to load shift roles."
                     message={getApiErrorMessage(
                         rolesError,
                         "Failed to load shift roles."
                     )}
                 />
-
             </AttendanceContainer>
         );
-
     }
 
-
     if (bookingError) {
-
         return (
             <AttendanceContainer>
-
                 <ErrorMessage
+                    title="Failed to load confirmed workers."
                     message={getApiErrorMessage(
                         bookingError,
                         "Failed to load confirmed workers."
                     )}
                 />
-
             </AttendanceContainer>
         );
-
     }
 
-
     if (attendanceError) {
-
         return (
             <AttendanceContainer>
-
                 <ErrorMessage
+                    title="Failed to load attendance."
                     message={getApiErrorMessage(
                         attendanceError,
                         "Failed to load attendance."
                     )}
                 />
-
             </AttendanceContainer>
         );
-
     }
-
 
     /* ---------------------------------------------------------------------- */
     /* Render                                                                  */
@@ -678,7 +535,6 @@ export function ShiftAttendance({
                 <div className="flex items-center justify-between border-b px-6 py-4">
 
                     <div>
-
                         <h2 className="font-semibold">
                             Attendance
                         </h2>
@@ -687,12 +543,9 @@ export function ShiftAttendance({
                             Track attendance for confirmed
                             workers assigned to this shift.
                         </p>
-
                     </div>
 
-
                     {!isLoading && (
-
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
 
                             <Users className="size-4" />
@@ -705,18 +558,15 @@ export function ShiftAttendance({
                             </span>
 
                         </div>
-
                     )}
 
                 </div>
-
 
                 {/* Content */}
 
                 <div className="p-6">
 
                     {isLoading && (
-
                         <div className="rounded-lg border p-8 text-center">
 
                             <p className="text-sm text-muted-foreground">
@@ -724,13 +574,10 @@ export function ShiftAttendance({
                             </p>
 
                         </div>
-
                     )}
-
 
                     {!isLoading &&
                         attendanceWorkers.length === 0 && (
-
                             <div className="rounded-lg border border-dashed p-8 text-center">
 
                                 <Users className="mx-auto size-8 text-muted-foreground" />
@@ -746,51 +593,66 @@ export function ShiftAttendance({
                                 </p>
 
                             </div>
-
                         )}
-
 
                     {!isLoading &&
                         attendanceWorkers.length > 0 && (
-
                             <div className="divide-y rounded-lg border">
 
                                 {attendanceWorkers.map(
                                     (worker) => (
-
                                         <AttendanceRow
-                                            key={worker.booking.id}
+                                            key={
+                                                worker.booking.id
+                                            }
                                             worker={worker}
                                             onCheckIn={() =>
-                                                openActionDialog(worker, "checkin")
+                                                openActionDialog(
+                                                    worker,
+                                                    "checkin"
+                                                )
                                             }
                                             onCheckOut={() =>
-                                                openActionDialog(worker, "checkout")
+                                                openActionDialog(
+                                                    worker,
+                                                    "checkout"
+                                                )
                                             }
                                             onMarkAbsent={() =>
-                                                openActionDialog(worker, "absent")
+                                                openActionDialog(
+                                                    worker,
+                                                    "absent"
+                                                )
                                             }
-                                            onViewPayroll={(payrollId) =>
-                                                router.push(`/payroll/${payrollId}`)
+                                            onViewPayroll={(
+                                                payrollId
+                                            ) =>
+                                                router.push(
+                                                    `/payroll/${payrollId}`
+                                                )
                                             }
-                                            onPayrollGenerated={async () => {
-                                                await queryClient.invalidateQueries({
-                                                    queryKey: ["booking-attendance"],
-                                                });
-                                            }}
+                                            onPayrollGenerated={
+                                                async () => {
+                                                    await queryClient.invalidateQueries(
+                                                        {
+                                                            queryKey:
+                                                                [
+                                                                    "booking-attendance",
+                                                                ],
+                                                        }
+                                                    );
+                                                }
+                                            }
                                         />
-
                                     )
                                 )}
 
                             </div>
-
                         )}
 
                 </div>
 
             </AttendanceContainer>
-
 
             {/* ---------------------------------------------------------------- */}
             {/* Attendance Action Dialog                                         */}
@@ -799,14 +661,11 @@ export function ShiftAttendance({
             <Dialog
                 open={!!action}
                 onOpenChange={(open) => {
-
                     if (!open) {
                         closeActionDialog();
                     }
-
                 }}
             >
-
                 <DialogContent>
 
                     <DialogHeader>
@@ -817,9 +676,7 @@ export function ShiftAttendance({
 
                     </DialogHeader>
 
-
                     {selectedWorker && (
-
                         <div className="space-y-5">
 
                             {/* Worker */}
@@ -842,7 +699,6 @@ export function ShiftAttendance({
 
                             </div>
 
-
                             {/* Remarks */}
 
                             <div className="space-y-2">
@@ -859,12 +715,10 @@ export function ShiftAttendance({
 
                                 </label>
 
-
                                 <Textarea
                                     id="attendance-remarks"
                                     value={remarks}
                                     onChange={(event) => {
-
                                         setRemarks(
                                             event.target.value
                                         );
@@ -874,7 +728,6 @@ export function ShiftAttendance({
                                                 null
                                             );
                                         }
-
                                     }}
                                     placeholder="Add a remark..."
                                     disabled={
@@ -884,11 +737,9 @@ export function ShiftAttendance({
 
                             </div>
 
-
                             {/* Error */}
 
                             {actionError && (
-
                                 <div className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2">
 
                                     <p className="text-sm text-destructive">
@@ -896,9 +747,7 @@ export function ShiftAttendance({
                                     </p>
 
                                 </div>
-
                             )}
-
 
                             {/* Footer */}
 
@@ -917,12 +766,10 @@ export function ShiftAttendance({
                                     Cancel
                                 </Button>
 
-
                                 <Button
                                     type="button"
                                     variant={
-                                        action ===
-                                            "absent"
+                                        action === "absent"
                                             ? "destructive"
                                             : "default"
                                     }
@@ -943,16 +790,13 @@ export function ShiftAttendance({
                             </DialogFooter>
 
                         </div>
-
                     )}
 
                 </DialogContent>
-
             </Dialog>
         </>
     );
 }
-
 
 /* -------------------------------------------------------------------------- */
 /* Attendance Container                                                       */
@@ -963,15 +807,12 @@ function AttendanceContainer({
 }: {
     children: React.ReactNode;
 }) {
-
     return (
         <div className="rounded-xl border bg-card">
             {children}
         </div>
     );
-
 }
-
 
 /* -------------------------------------------------------------------------- */
 /* Attendance Row                                                             */
@@ -985,7 +826,6 @@ type AttendanceRowProps = {
     onViewPayroll: (payrollId: string) => void;
     onPayrollGenerated: () => Promise<void>;
 };
-
 
 function AttendanceRow({
     worker,
@@ -1034,6 +874,7 @@ function AttendanceRow({
 
                     {attendance?.checkInTime && (
                         <p className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
+
                             <LogIn className="size-3" />
 
                             Check in:{" "}
@@ -1041,11 +882,13 @@ function AttendanceRow({
                             {formatAttendanceDateTime(
                                 attendance.checkInTime
                             )}
+
                         </p>
                     )}
 
                     {attendance?.checkOutTime && (
                         <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+
                             <LogOut className="size-3" />
 
                             Check out:{" "}
@@ -1053,6 +896,7 @@ function AttendanceRow({
                             {formatAttendanceDateTime(
                                 attendance.checkOutTime
                             )}
+
                         </p>
                     )}
 
@@ -1063,8 +907,8 @@ function AttendanceRow({
                     )}
 
                 </div>
-            </div>
 
+            </div>
 
             {/* Actions */}
 
@@ -1080,7 +924,6 @@ function AttendanceRow({
                     </Button>
                 )}
 
-
                 {canCheckOut(attendance) && (
                     <Button
                         size="sm"
@@ -1092,7 +935,6 @@ function AttendanceRow({
                     </Button>
                 )}
 
-
                 {canMarkAbsent(attendance) && (
                     <Button
                         size="sm"
@@ -1103,7 +945,6 @@ function AttendanceRow({
                         Mark Absent
                     </Button>
                 )}
-
 
                 {/* Payroll */}
 
@@ -1130,7 +971,9 @@ function AttendanceRow({
                     AttendanceStatus.Pending ? (
                     <GeneratePayrollButton
                         attendanceId={attendance.id}
-                        onSuccess={onPayrollGenerated}
+                        onSuccess={
+                            onPayrollGenerated
+                        }
                     />
                 ) : null}
 
@@ -1140,24 +983,24 @@ function AttendanceRow({
     );
 }
 
-
 /* -------------------------------------------------------------------------- */
 /* Error                                                                      */
 /* -------------------------------------------------------------------------- */
 
 function ErrorMessage({
+    title,
     message,
 }: {
+    title: string;
     message: string;
 }) {
-
     return (
         <div className="p-6">
 
             <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4">
 
                 <p className="text-sm font-medium text-destructive">
-                    Failed to load attendance.
+                    {title}
                 </p>
 
                 <p className="mt-1 text-sm text-muted-foreground">
@@ -1168,9 +1011,7 @@ function ErrorMessage({
 
         </div>
     );
-
 }
-
 
 /* -------------------------------------------------------------------------- */
 /* Action Helpers                                                             */
@@ -1179,9 +1020,7 @@ function ErrorMessage({
 function getActionTitle(
     action: AttendanceAction
 ): string {
-
     switch (action) {
-
         case "checkin":
             return "Check In Worker";
 
@@ -1193,18 +1032,13 @@ function getActionTitle(
 
         default:
             return "Attendance";
-
     }
-
 }
-
 
 function getActionButtonLabel(
     action: AttendanceAction
 ): string {
-
     switch (action) {
-
         case "checkin":
             return "Check In";
 
@@ -1216,11 +1050,8 @@ function getActionButtonLabel(
 
         default:
             return "Save";
-
     }
-
 }
-
 
 /* -------------------------------------------------------------------------- */
 /* HTTP Helpers                                                               */
@@ -1229,13 +1060,11 @@ function getActionButtonLabel(
 function isNotFoundError(
     error: unknown
 ): boolean {
-
     if (
         typeof error === "object" &&
         error !== null &&
         "response" in error
     ) {
-
         const response = (
             error as {
                 response?: {
@@ -1244,12 +1073,8 @@ function isNotFoundError(
             }
         ).response;
 
-
         return response?.status === 404;
-
     }
 
-
     return false;
-
 }

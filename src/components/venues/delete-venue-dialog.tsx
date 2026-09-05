@@ -1,11 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Trash2 } from "lucide-react";
+import {
+    useMutation,
+    useQueryClient,
+} from "@tanstack/react-query";
+import {
+    Loader2,
+    Trash2,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-
 import {
     Dialog,
     DialogContent,
@@ -20,6 +25,7 @@ import {
     type Venue,
 } from "@/lib/api/venues";
 
+import { getApiErrorMessage } from "@/lib/helpers/api-error";
 
 type DeleteVenueDialogProps = {
     venue: Venue;
@@ -27,36 +33,29 @@ type DeleteVenueDialogProps = {
     onOpenChange: (open: boolean) => void;
 };
 
-
 export function DeleteVenueDialog({
     venue,
     open,
     onOpenChange,
 }: DeleteVenueDialogProps) {
-
     const queryClient = useQueryClient();
 
     const [error, setError] =
         useState<string | null>(null);
-
 
     const deleteMutation = useMutation({
         mutationFn: () =>
             deleteVenue(venue.id),
 
         onSuccess: async () => {
-
             setError(null);
 
-            // Close dialog
             onOpenChange(false);
 
-            // Refresh venue list
             await queryClient.invalidateQueries({
                 queryKey: ["venues"],
             });
 
-            // Refresh venue detail cache
             await queryClient.invalidateQueries({
                 queryKey: [
                     "venue",
@@ -66,57 +65,32 @@ export function DeleteVenueDialog({
         },
 
         onError: (error) => {
-
             console.error(
                 "Failed to delete venue:",
                 error
             );
 
             setError(
-                error instanceof Error
-                    ? error.message
-                    : "Failed to delete venue. Please try again."
+                getApiErrorMessage(
+                    error,
+                    "Failed to delete venue."
+                )
             );
         },
     });
 
-
     const handleDelete = () => {
-
         setError(null);
-
         deleteMutation.mutate();
     };
-
-
-    const handleOpenChange = (
-        value: boolean
-    ) => {
-
-        if (
-            deleteMutation.isPending
-        ) {
-            return;
-        }
-
-        if (!value) {
-            setError(null);
-        }
-
-        onOpenChange(value);
-    };
-
 
     return (
         <Dialog
             open={open}
-            onOpenChange={handleOpenChange}
+            onOpenChange={onOpenChange}
         >
-
             <DialogContent>
-
                 <DialogHeader>
-
                     <DialogTitle>
                         Delete Venue
                     </DialogTitle>
@@ -128,14 +102,11 @@ export function DeleteVenueDialog({
                         </span>
                         ?
                     </DialogDescription>
-
                 </DialogHeader>
-
 
                 <p className="text-sm text-muted-foreground">
                     This action cannot be undone.
                 </p>
-
 
                 {error && (
                     <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
@@ -143,9 +114,7 @@ export function DeleteVenueDialog({
                     </div>
                 )}
 
-
                 <DialogFooter>
-
                     <Button
                         type="button"
                         variant="outline"
@@ -153,12 +122,11 @@ export function DeleteVenueDialog({
                             deleteMutation.isPending
                         }
                         onClick={() =>
-                            handleOpenChange(false)
+                            onOpenChange(false)
                         }
                     >
                         Cancel
                     </Button>
-
 
                     <Button
                         type="button"
@@ -168,7 +136,6 @@ export function DeleteVenueDialog({
                         }
                         onClick={handleDelete}
                     >
-
                         {deleteMutation.isPending ? (
                             <>
                                 <Loader2 className="mr-2 size-4 animate-spin" />
@@ -180,14 +147,9 @@ export function DeleteVenueDialog({
                                 Delete Venue
                             </>
                         )}
-
                     </Button>
-
                 </DialogFooter>
-
             </DialogContent>
-
         </Dialog>
     );
 }
-

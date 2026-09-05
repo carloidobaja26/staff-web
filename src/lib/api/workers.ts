@@ -1,5 +1,6 @@
 
 import { apiClient } from "./client";
+import { ApiResponse } from "./types";
 
 export type Worker = {
     id: string;
@@ -17,12 +18,6 @@ export type Worker = {
     workerNumber: string;
 
     isActive: boolean;
-};
-
-export type ApiResponse<T> = {
-    success: boolean;
-    message: string;
-    data: T;
 };
 
 export type CreateWorkerRequest = {
