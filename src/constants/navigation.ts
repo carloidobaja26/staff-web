@@ -9,6 +9,7 @@ import {
   UserRound,
   Wallet,
   Building2,
+  UserPen,
 } from "lucide-react";
 
 export type NavigationItem = {
@@ -85,6 +86,16 @@ export const navigation: NavigationGroup[] = [
         label: "Payroll",
         href: "/payroll",
         icon: Wallet,
+      },
+      {
+        label: "Users",
+        href: "/users",
+        icon: Users,
+      },
+      {
+        label: "Roles",
+        href: "/roles",
+        icon: UserPen,
       },
     ],
   },
